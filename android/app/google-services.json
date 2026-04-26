@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "432036284021",
+    "project_id": "smart-timetable-ba461",
+    "storage_bucket": "smart-timetable-ba461.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:432036284021:android:04183f31437db2d45dda3c",
+        "android_client_info": {
+          "package_name": "com.example.smart_timetable_managment"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3wCWdL-g3LuJsC2P7thvqq24mzly2QNo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
