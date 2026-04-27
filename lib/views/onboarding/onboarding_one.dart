@@ -28,18 +28,18 @@ class OnbroadingScreen extends StatelessWidget {
                 children: [
                   OnBoardingPage(
                     image: AppImages.onboardingOne,
-                    title: AppStrings.smarttimetableTittle,
-                    description: AppStrings.subtitleOne,
+                    title: AppStrings.titleOnboardingOne,
+                    description: AppStrings.descriptionOnbaordingOne,
                   ),
                   OnBoardingPage(
                     image: AppImages.onboardingTwo,
-                    title: AppStrings.smarttimetableTwo,
-                    description: AppStrings.subtitleTwo,
+                    title: AppStrings.titleOnboardigTwo,
+                    description: AppStrings.descriptionOnBoardingTwo,
                   ),
                   OnBoardingPage(
                     image: AppImages.onboardingThree,
-                    title: AppStrings.smarttimetableThree,
-                    description: AppStrings.subtitleThree,
+                    title: AppStrings.titleOnboardingThree,
+                    description: AppStrings.descriptionOnboardingThree,
                   ),
                 ],
               ),
@@ -73,7 +73,7 @@ class OnbroadingScreen extends StatelessWidget {
                           controller.currentPageIndex.value,
                         );
                       },
-                      text: AppStrings.Next,
+                      text: AppStrings.next,
                       color: AppColors.primary,
                       borderRadius: AppSizes.r10,
                       height: 56.h,

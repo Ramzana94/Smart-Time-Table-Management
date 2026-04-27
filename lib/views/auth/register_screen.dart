@@ -43,12 +43,12 @@ class MyRegistrationScreen extends StatelessWidget {
                   ),
                   10.verticalSpace,
                   Text(
-                    AppStrings.registration,
+                    AppStrings.register,
                     style: TextStyle(fontSize: AppSizes.s24, fontWeight: FontWeight.w600),
                   ),
                   10.verticalSpace,
                   Text(
-                    AppStrings.subtitleRegistration,
+                    AppStrings.registerSubTitle,
                     style: TextStyle(fontSize: AppSizes.s14, fontWeight: FontWeight.w400),
                   ),
                   10.verticalSpace,
@@ -167,7 +167,7 @@ class MyRegistrationScreen extends StatelessWidget {
                       borderRadius: AppSizes.r10,
                       height: 57.h,
                       minWidth: 1.sw,
-                      text: AppStrings.registrationButton,
+                      text: AppStrings.registerButton,
                       isLoading: authController.isSignupLoading.value,
                       color: AppColors.primary,
                       onPressed: (){
@@ -187,7 +187,7 @@ class MyRegistrationScreen extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Text(
-                          AppStrings.Orcontinuewith,
+                          AppStrings.orCotinueWith,
                           style: TextStyle(
                             color: AppColors.black,
                             fontSize: AppSizes.s13,
@@ -226,11 +226,11 @@ class MyRegistrationScreen extends StatelessWidget {
                       },
                       child: RichText(
                         text: TextSpan(
-                          text: AppStrings.havingAccount,
+                          text: AppStrings.haveAccount,
                           style: TextStyle(fontSize: AppSizes.s14, color: AppColors.black),
                           children: <TextSpan>[
                             TextSpan(
-                              text: AppStrings.havingLogin,
+                              text: AppStrings.loginSubtitle,
                               style: TextStyle(
                                 color: AppColors.primary,
                                 fontSize: AppSizes.s14,

@@ -46,7 +46,7 @@ class MyForgotPasswordScreen extends StatelessWidget {
                 ),
                 10.verticalSpace,
                 Text(
-                  AppStrings.forgotpasswodTitle,
+                  AppStrings.forgotPasswordTitle,
                   style: TextStyle(
                     fontSize: AppSizes.s24,
                     fontWeight: FontWeight.w600,
@@ -61,7 +61,7 @@ class MyForgotPasswordScreen extends StatelessWidget {
                     opacity: 0.4,
                     child: Text(
                       textAlign: TextAlign.center,
-                      AppStrings.forgotPasswordsubtitle,
+                      AppStrings.forgotPasswordTitle,
                     ),
                   ),
                 ),
@@ -79,7 +79,7 @@ class MyForgotPasswordScreen extends StatelessWidget {
                   height: 57,
                   color: AppColors.primary,
 
-                  text: AppStrings.sendCodeButton,
+                  text: AppStrings.sendLink,
                   onPressed: () {
                     Get.back();
                     if (forgotPasswordFormKey.currentState

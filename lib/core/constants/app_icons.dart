@@ -17,4 +17,6 @@ class AppIcons {
   static const IconData apartment = Icons.apartment;
     static const IconData watch = Icons.watch_later_outlined;
         static const IconData delete = Icons.delete;
+        static const IconData timetable = Icons.event;
+
 }

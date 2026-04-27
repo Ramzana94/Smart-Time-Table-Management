@@ -105,7 +105,7 @@ class LoginScreen extends StatelessWidget {
                           endIndent: 10,
                         ),
                       ),
-                      CustomText(text: AppStrings.Orcontinuewith),
+                      CustomText(text: AppStrings.orCotinueWith),
                       Expanded(
                         child: Divider(
                           color: AppColors.grey,
@@ -139,7 +139,7 @@ class LoginScreen extends StatelessWidget {
                       },
                       child: RichText(
                         text: TextSpan(
-                          text: AppStrings.haveNotAccount,
+                          text: AppStrings.havenotAccount,
                           style: TextStyle(
                             fontWeight: AppWeights.w400,
                             fontSize: AppSizes.s14,
@@ -147,7 +147,7 @@ class LoginScreen extends StatelessWidget {
                           ),
                           children: [
                             TextSpan(
-                              text: AppStrings.registrationButton,
+                              text: AppStrings.registerButton,
                               style: TextStyle(
                                 fontSize: AppSizes.s14,
                                 fontWeight: AppWeights.w400,
