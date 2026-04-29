@@ -221,6 +221,7 @@ class _HeaderCell extends StatelessWidget {
       padding: EdgeInsets.symmetric(
         horizontal: alignStart ? 24 : 16,
         vertical: 22,
+        
       ),
       alignment: alignStart ? Alignment.centerLeft : Alignment.center,
       child: Text(

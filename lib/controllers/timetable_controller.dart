@@ -139,17 +139,17 @@ class TimetableController extends GetxController {
     }
 
     final normalizedDays = _orderedDays(entries);
-    final times =
-        entries
-            .map((entry) => entry.time.trim())
-            .where((value) => value.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort(
-            (a, b) => _parseStartMinutes(a).compareTo(_parseStartMinutes(b)),
-          );
+    final expandedBoundaries = _expandedTimeBoundaries(entries);
 
-    final rows = times.map((time) {
+    if (expandedBoundaries.length < 2) {
+      return const TimetableGridData(days: _weekDayOrder, rows: []);
+    }
+
+    final rows = <TimetableGridRow>[];
+
+    for (var index = 0; index < expandedBoundaries.length - 1; index++) {
+      final slotStart = expandedBoundaries[index];
+      final slotEnd = expandedBoundaries[index + 1];
       final entriesByDay = <String, List<TimetableModel>>{};
 
       for (final day in normalizedDays) {
@@ -158,7 +158,7 @@ class TimetableController extends GetxController {
                 .where(
                   (entry) =>
                       _normalizeDay(entry.day) == day &&
-                      entry.time.trim() == time,
+                      _entryCoversSlot(entry, slotStart, slotEnd),
                 )
                 .toList()
               ..sort(
@@ -168,8 +168,13 @@ class TimetableController extends GetxController {
         entriesByDay[day] = matchingEntries;
       }
 
-      return TimetableGridRow(timeLabel: time, entriesByDay: entriesByDay);
-    }).toList();
+      rows.add(
+        TimetableGridRow(
+          timeLabel: _formatTimeRange(slotStart, slotEnd),
+          entriesByDay: entriesByDay,
+        ),
+      );
+    }
 
     return TimetableGridData(days: normalizedDays, rows: rows);
   }
@@ -189,6 +194,71 @@ class TimetableController extends GetxController {
           ..sort();
 
     return [..._weekDayOrder, ...extraDays];
+  }
+
+  List<int> _expandedTimeBoundaries(List<TimetableModel> entries) {
+    final parsedRanges = entries
+        .map((entry) => _parseTimeRange(entry.time))
+        .whereType<({int start, int end})>()
+        .where((range) => range.end > range.start)
+        .toList();
+
+    if (parsedRanges.isEmpty) {
+      return const <int>[];
+    }
+
+    final sortedBoundaries = <int>{
+      for (final range in parsedRanges) range.start,
+      for (final range in parsedRanges) range.end,
+    }.toList()..sort();
+
+    final slotStep = _slotStepMinutes(parsedRanges);
+    if (slotStep == null || sortedBoundaries.length < 2) {
+      return sortedBoundaries;
+    }
+
+    final expanded = <int>[sortedBoundaries.first];
+
+    for (var index = 0; index < sortedBoundaries.length - 1; index++) {
+      final current = sortedBoundaries[index];
+      final next = sortedBoundaries[index + 1];
+
+      var cursor = current + slotStep;
+      while (cursor < next) {
+        expanded.add(cursor);
+        cursor += slotStep;
+      }
+
+      expanded.add(next);
+    }
+
+    return expanded.toSet().toList()..sort();
+  }
+
+  int? _slotStepMinutes(List<({int start, int end})> ranges) {
+    int? shortestDuration;
+
+    for (final range in ranges) {
+      final duration = range.end - range.start;
+      if (duration <= 0) {
+        continue;
+      }
+
+      if (shortestDuration == null || duration < shortestDuration) {
+        shortestDuration = duration;
+      }
+    }
+
+    return shortestDuration;
+  }
+
+  bool _entryCoversSlot(TimetableModel entry, int slotStart, int slotEnd) {
+    final range = _parseTimeRange(entry.time);
+    if (range == null) {
+      return false;
+    }
+
+    return range.start <= slotStart && range.end >= slotEnd;
   }
 
   String _normalizeDay(String value) {
@@ -212,14 +282,49 @@ class TimetableController extends GetxController {
     return index == -1 ? 999 : index;
   }
 
-  int _parseStartMinutes(String timeRange) {
+  ({int start, int end})? _parseTimeRange(String timeRange) {
     final trimmed = timeRange.trim();
     if (trimmed.isEmpty) {
-      return 9999;
+      return null;
     }
 
-    final startRaw = trimmed.split('-').first.trim();
-    return _parseClockValue(startRaw);
+    final parts = trimmed
+        .split('-')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toList();
+
+    if (parts.length < 2) {
+      return null;
+    }
+
+    final startMinutes = _parseClockValue(parts.first);
+    final endMinutes = _parseClockValue(parts.sublist(1).join(' - '));
+
+    if (startMinutes == 9999 ||
+        endMinutes == 9999 ||
+        endMinutes <= startMinutes) {
+      return null;
+    }
+
+    return (start: startMinutes, end: endMinutes);
+  }
+
+  String _formatTimeRange(int startMinutes, int endMinutes) {
+    return '${_formatMinutes(startMinutes)} - ${_formatMinutes(endMinutes)}';
+  }
+
+  String _formatMinutes(int totalMinutes) {
+    final hour24 = totalMinutes ~/ 60;
+    final minute = totalMinutes % 60;
+    final suffix = hour24 >= 12 ? 'PM' : 'AM';
+    var hour12 = hour24 % 12;
+    if (hour12 == 0) {
+      hour12 = 12;
+    }
+
+    final minuteLabel = minute.toString().padLeft(2, '0');
+    return '$hour12:$minuteLabel $suffix';
   }
 
   int _parseClockValue(String raw) {

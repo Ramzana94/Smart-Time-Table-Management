@@ -74,7 +74,7 @@ class MyForgotPasswordScreen extends StatelessWidget {
                   validator: AppValidators.validateEmail, borderRadius: BorderRadius.circular(10),
                 ),
                 50.verticalSpace,
-                CustomMaterialButton(
+                CustomButton(
                   borderRadius: AppSizes.r10,
                   height: 57,
                   color: AppColors.primary,

@@ -98,7 +98,7 @@ class CustomTextFormField extends StatelessWidget {
   final RxBool? isVisible;
   final String? labelText;
   final int? maxLines;
-  final BorderRadius borderRadius;
+  final BorderRadius? borderRadius;
   final String? Function(String?)? validator;
   final VoidCallback? onToggle;
   final VoidCallback? onPressed;
@@ -114,7 +114,7 @@ class CustomTextFormField extends StatelessWidget {
     this.isVisible,
     this.onToggle,
     this.onPressed,
-    required this.borderRadius,
+    this.borderRadius,
     this.labelText,
     this.maxLines,
   });
@@ -151,13 +151,13 @@ class CustomTextFormField extends StatelessWidget {
                   ? const Icon(Icons.visibility)
                   : const Icon(Icons.visibility_off),
             ),
-            border: OutlineInputBorder(borderRadius: borderRadius),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             enabledBorder: OutlineInputBorder(
-              borderRadius: borderRadius,
+              borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: AppColors.grey),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: borderRadius,
+              borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: AppColors.primary),
             ),
           ),
@@ -175,13 +175,13 @@ class CustomTextFormField extends StatelessWidget {
           labelText: labelText,
           prefixIcon: prefixIcon,
           suffixIcon: suffixIcon,
-          border: OutlineInputBorder(borderRadius: borderRadius),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           enabledBorder: OutlineInputBorder(
-            borderRadius: borderRadius,
+            borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.grey),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: borderRadius,
+            borderRadius: BorderRadius.circular(10),
             borderSide: const BorderSide(color: AppColors.primary),
           ),
         ),

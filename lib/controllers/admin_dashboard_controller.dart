@@ -1,4 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -22,9 +24,25 @@ import 'package:smart_timetable_managment/widgets/app_textfield.dart';
 
 class AdminDashboardController extends GetxController
     with GetSingleTickerProviderStateMixin {
-  final DepartmentService _departmentService = DepartmentService();
-  final TeacherService _teacherService = TeacherService();
-  final TimetableService _timetableService = TimetableService();
+  AdminDashboardController({
+    DepartmentService? departmentService,
+    TeacherService? teacherService,
+    TimetableService? timetableService,
+  }) : _departmentService = departmentService ?? DepartmentService(),
+       _teacherService = teacherService ?? TeacherService(),
+       _timetableService = timetableService ?? TimetableService();
+
+  final DepartmentService _departmentService;
+  final TeacherService _teacherService;
+  final TimetableService _timetableService;
+
+  final departments = <DepartmentModel>[].obs;
+  final teachers = <TeacherModel>[].obs;
+  final timetableEntries = <TimetableModel>[].obs;
+
+  final isDepartmentsReady = false.obs;
+  final isTeachersReady = false.obs;
+  final isTimetableReady = false.obs;
 
   final ValueNotifier<String?> dayNotifier = ValueNotifier(null);
   final ValueNotifier<TeacherModel?> timetableTeacherNotifier = ValueNotifier(
@@ -39,6 +57,7 @@ class AdminDashboardController extends GetxController
 
   final startTime = ''.obs;
   final endTime = ''.obs;
+  final editingTimetableId = RxnString();
   final currentTabIndex = 0.obs;
 
   final subjectController = TextEditingController();
@@ -51,17 +70,73 @@ class AdminDashboardController extends GetxController
   final teacherPhoneController = TextEditingController();
   final teacherSpecializationController = TextEditingController();
 
-  final days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  final semesters = ["1", "2", "3", "4", "5", "6", "7", "8"];
-  final shifts = ["Morning", "Evening"];
+  final days = const ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+  final semesters = const ["1", "2", "3", "4", "5", "6", "7", "8"];
+  final shifts = const ["Morning", "Evening"];
+  List<TimetableModel> get upcomingLectures => teacherTimetable;
+  List<TimetableModel> get todayLectures {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return [];
+    final today = DateTime.now().weekday;
+
+    final days = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ];
+
+    return teacherTimetable
+        .where((e) => e.day.toLowerCase() == days[today - 1].toLowerCase())
+        .toList();
+  }
 
   late final TabController tabController;
+
+  StreamSubscription<List<DepartmentModel>>? _departmentSubscription;
+  StreamSubscription<List<TeacherModel>>? _teacherSubscription;
+  StreamSubscription<List<TimetableModel>>? _timetableSubscription;
 
   Stream<List<DepartmentModel>> get departmentsStream =>
       _departmentService.getDepartments();
 
   Stream<List<TeacherModel>> get teachersStream =>
       _teacherService.getTeachers();
+
+  Stream<List<TimetableModel>> get timetableStream =>
+      _timetableService.getTimetable();
+
+  // int get totalClassCount => timetableEntries.length;
+  int get totalClassCount => teacherTimetable.length;
+
+  int get totalTeacherCount => teachers.length;
+
+  int get totalDepartmentCount => departments.length;
+
+  int get totalRoomCount => timetableEntries
+      .map((entry) => entry.room.trim())
+      .where((room) => room.isNotEmpty)
+      .toSet()
+      .length;
+
+  List<String> get knownRooms {
+    final rooms =
+        timetableEntries
+            .map((entry) => entry.room.trim())
+            .where((room) => room.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return rooms;
+  }
+
+  bool get canCheckRoomAvailability =>
+      dayNotifier.value != null &&
+      startTime.value.isNotEmpty &&
+      endTime.value.isNotEmpty;
 
   @override
   void onInit() {
@@ -71,10 +146,14 @@ class AdminDashboardController extends GetxController
       vsync: this,
       initialIndex: currentTabIndex.value,
     );
+    _bindAdminStreams();
   }
 
   @override
   void onClose() {
+    _departmentSubscription?.cancel();
+    _teacherSubscription?.cancel();
+    _timetableSubscription?.cancel();
     tabController.dispose();
     dayNotifier.dispose();
     timetableTeacherNotifier.dispose();
@@ -94,8 +173,63 @@ class AdminDashboardController extends GetxController
     super.onClose();
   }
 
+  List<TimetableModel> get teacherTimetable {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (uid == null) return [];
+
+    return timetableEntries.where((e) => e.teacherId == uid).toList();
+  }
+
+  void _bindAdminStreams() {
+    _departmentSubscription = departmentsStream.listen(
+      (items) {
+        departments.assignAll(items);
+        isDepartmentsReady.value = true;
+        _syncSelectedDepartment(timetableDepartmentNotifier, items);
+        _syncSelectedDepartment(teacherDepartmentNotifier, items);
+      },
+      onError: (_) {
+        isDepartmentsReady.value = true;
+      },
+    );
+
+    _teacherSubscription = teachersStream.listen(
+      (items) {
+        teachers.assignAll(items);
+        isTeachersReady.value = true;
+        _syncSelectedTeacher(items);
+      },
+      onError: (_) {
+        isTeachersReady.value = true;
+      },
+    );
+
+    _timetableSubscription = timetableStream.listen(
+      (items) {
+        timetableEntries.assignAll(items);
+        isTimetableReady.value = true;
+      },
+      onError: (_) {
+        isTimetableReady.value = true;
+      },
+    );
+  }
+
   void changeTab(int index) {
     currentTabIndex.value = index;
+  }
+
+  int departmentClassCount(DepartmentModel department) {
+    return timetableEntries
+        .where((entry) => _isSameDepartmentEntry(entry, department))
+        .length;
+  }
+
+  int teacherClassCount(TeacherModel teacher) {
+    return timetableEntries
+        .where((entry) => _isSameTeacherEntry(entry, teacher))
+        .length;
   }
 
   Future<void> deleteTeacher(String id) async {
@@ -111,6 +245,7 @@ class AdminDashboardController extends GetxController
     roomController.clear();
     startTime.value = '';
     endTime.value = '';
+    editingTimetableId.value = null;
     dayNotifier.value = null;
     timetableTeacherNotifier.value = null;
     timetableDepartmentNotifier.value = null;
@@ -132,30 +267,51 @@ class AdminDashboardController extends GetxController
     teacherDepartmentNotifier.value = null;
   }
 
-  void _syncSelectedTeacher(List<TeacherModel> teachers) {
+  bool _isSameDepartmentEntry(
+    TimetableModel entry,
+    DepartmentModel department,
+  ) {
+    if (department.id.isNotEmpty && entry.departmentId.isNotEmpty) {
+      return entry.departmentId == department.id;
+    }
+
+    return _normalize(entry.department) == _normalize(department.depName);
+  }
+
+  bool _isSameTeacherEntry(TimetableModel entry, TeacherModel teacher) {
+    if (teacher.uid.isNotEmpty && entry.teacherId.isNotEmpty) {
+      return entry.teacherId == teacher.uid;
+    }
+
+    return _normalize(entry.teacher) == _normalize(teacher.teacherName);
+  }
+
+  String _normalize(String value) => value.trim().toLowerCase();
+
+  void _syncSelectedTeacher(List<TeacherModel> teacherItems) {
     final selectedTeacher = timetableTeacherNotifier.value;
-    if (selectedTeacher != null && !teachers.contains(selectedTeacher)) {
+    if (selectedTeacher != null && !teacherItems.contains(selectedTeacher)) {
       timetableTeacherNotifier.value = null;
     }
   }
 
   void _syncSelectedDepartment(
     ValueNotifier<DepartmentModel?> notifier,
-    List<DepartmentModel> departments,
+    List<DepartmentModel> departmentItems,
   ) {
     final selectedDepartment = notifier.value;
     if (selectedDepartment != null &&
-        !departments.contains(selectedDepartment)) {
+        !departmentItems.contains(selectedDepartment)) {
       notifier.value = null;
     }
   }
 
   DepartmentModel? _findDepartmentByIdOrName(
-    List<DepartmentModel> departments, {
+    List<DepartmentModel> departmentItems, {
     String? departmentId,
     String? departmentName,
   }) {
-    for (final department in departments) {
+    for (final department in departmentItems) {
       if (departmentId != null &&
           departmentId.isNotEmpty &&
           department.id == departmentId) {
@@ -163,10 +319,10 @@ class AdminDashboardController extends GetxController
       }
     }
 
-    for (final department in departments) {
-      if (departmentName != null &&
-          departmentName.isNotEmpty &&
-          department.depName == departmentName) {
+    final normalizedName = _normalize(departmentName ?? '');
+    for (final department in departmentItems) {
+      if (normalizedName.isNotEmpty &&
+          _normalize(department.depName) == normalizedName) {
         return department;
       }
     }
@@ -175,22 +331,22 @@ class AdminDashboardController extends GetxController
   }
 
   TeacherModel? _findTeacherByIdOrName(
-    List<TeacherModel> teachers, {
+    List<TeacherModel> teacherItems, {
     String? teacherId,
     String? teacherName,
   }) {
-    for (final teacher in teachers) {
+    for (final teacher in teacherItems) {
       if (teacherId != null &&
           teacherId.isNotEmpty &&
-          teacher.id == teacherId) {
+          teacher.uid == teacherId) {
         return teacher;
       }
     }
 
-    for (final teacher in teachers) {
-      if (teacherName != null &&
-          teacherName.isNotEmpty &&
-          teacher.teacherName == teacherName) {
+    final normalizedName = _normalize(teacherName ?? '');
+    for (final teacher in teacherItems) {
+      if (normalizedName.isNotEmpty &&
+          _normalize(teacher.teacherName) == normalizedName) {
         return teacher;
       }
     }
@@ -215,6 +371,188 @@ class AdminDashboardController extends GetxController
     endTime.value = '';
   }
 
+  List<String> occupiedRoomsForCurrentSelection({String? excludeTimetableId}) {
+    if (!canCheckRoomAvailability) {
+      return const <String>[];
+    }
+
+    final day = dayNotifier.value ?? '';
+    final occupiedRooms =
+        timetableEntries
+            .where(
+              (entry) =>
+                  entry.id != excludeTimetableId &&
+                  entry.room.trim().isNotEmpty &&
+                  _normalize(entry.day) == _normalize(day) &&
+                  _timeRangesOverlap(
+                    startTime.value,
+                    endTime.value,
+                    entry.time.trim(),
+                  ),
+            )
+            .map((entry) => entry.room.trim())
+            .toSet()
+            .toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    return occupiedRooms;
+  }
+
+  List<String> availableRoomsForCurrentSelection({String? excludeTimetableId}) {
+    if (!canCheckRoomAvailability) {
+      return const <String>[];
+    }
+
+    final busyRooms = occupiedRoomsForCurrentSelection(
+      excludeTimetableId: excludeTimetableId,
+    ).map(_normalize).toSet();
+
+    return knownRooms
+        .where((room) => !busyRooms.contains(_normalize(room)))
+        .toList(growable: false);
+  }
+
+  List<TimetableModel> roomConflictsForCurrentSelection(
+    String roomName, {
+    String? excludeTimetableId,
+  }) {
+    final normalizedRoom = _normalize(roomName);
+    if (!canCheckRoomAvailability || normalizedRoom.isEmpty) {
+      return const <TimetableModel>[];
+    }
+
+    final day = dayNotifier.value ?? '';
+
+    return timetableEntries
+        .where((entry) {
+          if (entry.id == excludeTimetableId) {
+            return false;
+          }
+
+          if (_normalize(entry.room) != normalizedRoom) {
+            return false;
+          }
+
+          if (_normalize(entry.day) != _normalize(day)) {
+            return false;
+          }
+
+          return _timeRangesOverlap(startTime.value, endTime.value, entry.time);
+        })
+        .toList(growable: false);
+  }
+
+  String? currentRoomConflictMessage({String? excludeTimetableId}) {
+    final roomName = roomController.text.trim();
+    if (roomName.isEmpty) {
+      return null;
+    }
+
+    final conflicts = roomConflictsForCurrentSelection(
+      roomName,
+      excludeTimetableId: excludeTimetableId,
+    );
+
+    if (conflicts.isEmpty) {
+      return null;
+    }
+
+    final firstConflict = conflicts.first;
+    return 'Room ${roomName.trim()} is already booked for ${firstConflict.subject} on ${firstConflict.day} at ${firstConflict.time}.';
+  }
+
+  bool _timeRangesOverlap(
+    String selectedStart,
+    String selectedEnd,
+    String existingRange,
+  ) {
+    final selectedRange = _parseTimeRange('$selectedStart - $selectedEnd');
+    final currentRange = _parseTimeRange(existingRange);
+
+    if (selectedRange == null || currentRange == null) {
+      return false;
+    }
+
+    return selectedRange.start < currentRange.end &&
+        currentRange.start < selectedRange.end;
+  }
+
+  ({int start, int end})? _parseTimeRange(String value) {
+    final parts = value
+        .split('-')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toList();
+
+    if (parts.length < 2) {
+      return null;
+    }
+
+    final startMinutes = _parseClockValue(parts.first);
+    final endMinutes = _parseClockValue(parts.sublist(1).join(' - '));
+
+    if (startMinutes == null || endMinutes == null) {
+      return null;
+    }
+
+    return (start: startMinutes, end: endMinutes);
+  }
+
+  int? _parseClockValue(String raw) {
+    final value = raw.toUpperCase().replaceAll('.', '').trim();
+    final twelveHourMatch = RegExp(
+      r'^(\d{1,2}):(\d{2})\s*([AP]M)$',
+    ).firstMatch(value);
+
+    if (twelveHourMatch != null) {
+      var hour = int.parse(twelveHourMatch.group(1)!);
+      final minute = int.parse(twelveHourMatch.group(2)!);
+      final meridiem = twelveHourMatch.group(3)!;
+
+      if (meridiem == 'PM' && hour != 12) {
+        hour += 12;
+      } else if (meridiem == 'AM' && hour == 12) {
+        hour = 0;
+      }
+
+      return (hour * 60) + minute;
+    }
+
+    final twentyFourHourMatch = RegExp(
+      r'^(\d{1,2}):(\d{2})$',
+    ).firstMatch(value);
+
+    if (twentyFourHourMatch != null) {
+      final hour = int.parse(twentyFourHourMatch.group(1)!);
+      final minute = int.parse(twentyFourHourMatch.group(2)!);
+      return (hour * 60) + minute;
+    }
+
+    return null;
+  }
+
+  Future<List<DepartmentModel>> _resolveDepartments() async {
+    if (isDepartmentsReady.value) {
+      return departments.toList(growable: false);
+    }
+
+    final items = await departmentsStream.first;
+    departments.assignAll(items);
+    isDepartmentsReady.value = true;
+    return items;
+  }
+
+  Future<List<TeacherModel>> _resolveTeachers() async {
+    if (isTeachersReady.value) {
+      return teachers.toList(growable: false);
+    }
+
+    final items = await teachersStream.first;
+    teachers.assignAll(items);
+    isTeachersReady.value = true;
+    return items;
+  }
+
   TimetableModel? _buildTimetableModel() {
     final selectedTeacher = timetableTeacherNotifier.value;
     final selectedDepartment = timetableDepartmentNotifier.value;
@@ -236,7 +574,7 @@ class AdminDashboardController extends GetxController
       time: "${startTime.value} - ${endTime.value}",
       subject: subjectController.text.trim(),
       teacher: selectedTeacher.teacherName,
-      teacherId: selectedTeacher.id,
+      teacherId: selectedTeacher.uid,
       room: roomController.text.trim(),
       department: selectedDepartment.depName,
       departmentId: selectedDepartment.id,
@@ -251,17 +589,385 @@ class AdminDashboardController extends GetxController
   }) {
     final context = Get.context!;
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: child,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(radius)),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomSheetHeader({
+    required String title,
+    required String subtitle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Container(
+            width: 48,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFFD6DEEC),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+        ),
+        18.verticalSpace,
+        CustomText(
+          text: title,
+          fontSize: AppSizes.s20,
+          fontWeight: AppWeights.bold,
+        ),
+        6.verticalSpace,
+        CustomText(
+          text: subtitle,
+          color: const Color(0xFF61748E),
+          fontSize: AppSizes.s14,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionLabel(String text, {bool isRequired = false}) {
+    return CustomText(
+      isRequired: isRequired,
+      text: text,
+      fontSize: AppSizes.s14,
+      fontWeight: AppWeights.bold,
+    );
+  }
+
+  Widget _buildSelectionPlaceholder({
+    required String message,
+    IconData icon = Icons.info_outline_rounded,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAFE),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFDDE6F2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 34,
+            width: 34,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE7F0FB),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppColors.primary, size: 18),
+          ),
+          12.horizontalSpace,
+          Expanded(
+            child: CustomText(
+              text: message,
+              color: const Color(0xFF496483),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTeacherSelector() {
+    return Obx(() {
+      if (teachers.isEmpty) {
+        return _buildSelectionPlaceholder(
+          message: isTeachersReady.value
+              ? 'Add a teacher first to assign timetable entries.'
+              : 'Teacher list is syncing and will appear here shortly.',
+          icon: Icons.school_outlined,
+        );
+      }
+
+      return CustomDropdown<TeacherModel>(
+        items: teachers.toList(growable: false),
+        itemLabel: (item) => item.teacherName,
+        valueListenable: timetableTeacherNotifier,
+        hintText: AppStrings.teacherNameHint,
+        onChanged: (value) {
+          timetableTeacherNotifier.value = value;
+        },
+      );
+    });
+  }
+
+  Widget _buildDepartmentSelector({
+    required ValueNotifier<DepartmentModel?> notifier,
+    required String hintText,
+    required String emptyMessage,
+  }) {
+    return Obx(() {
+      if (departments.isEmpty) {
+        return _buildSelectionPlaceholder(
+          message: isDepartmentsReady.value
+              ? emptyMessage
+              : 'Department list is syncing and will appear here shortly.',
+          icon: Icons.apartment_outlined,
+        );
+      }
+
+      return CustomDropdown<DepartmentModel>(
+        items: departments.toList(growable: false),
+        itemLabel: (item) => item.depName,
+        valueListenable: notifier,
+        onChanged: (value) {
+          notifier.value = value;
+        },
+        hintText: hintText,
+      );
+    });
+  }
+
+  Widget _buildRoomFieldSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomTextFormField(
+          hintText: AppStrings.roomHint,
+          controller: roomController,
+        ),
+        10.verticalSpace,
+        _buildRoomAvailabilityPanel(),
+      ],
+    );
+  }
+
+  Widget _buildRoomAvailabilityPanel() {
+    return AnimatedBuilder(
+      animation: Listenable.merge([dayNotifier, shiftNotifier, roomController]),
+      builder: (context, _) {
+        return Obx(() {
+          final busyRooms = occupiedRoomsForCurrentSelection(
+            excludeTimetableId: editingTimetableId.value,
+          );
+          final availableRooms = availableRoomsForCurrentSelection(
+            excludeTimetableId: editingTimetableId.value,
+          );
+          final roomConflictMessage = currentRoomConflictMessage(
+            excludeTimetableId: editingTimetableId.value,
+          );
+
+          if (!canCheckRoomAvailability) {
+            return _buildSelectionPlaceholder(
+              message:
+                  'Select the day and time first to check which rooms are free.',
+              icon: Icons.event_available_outlined,
+            );
+          }
+
+          if (knownRooms.isEmpty) {
+            return _buildSelectionPlaceholder(
+              message:
+                  'No scheduled rooms found yet. Save the first room to build room availability.',
+              icon: Icons.meeting_room_outlined,
+            );
+          }
+
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF7FAFE),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFDDE6F2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.meeting_room_outlined,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                    8.horizontalSpace,
+                    Expanded(
+                      child: CustomText(
+                        text: 'Room availability for this slot',
+                        fontWeight: AppWeights.bold,
+                        fontSize: AppSizes.s14,
+                        color: const Color(0xFF193252),
+                      ),
+                    ),
+                  ],
+                ),
+                10.verticalSpace,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildRoomStatusPill(
+                      label: '${availableRooms.length} available',
+                      backgroundColor: const Color(0xFFE7F6EF),
+                      textColor: const Color(0xFF157347),
+                    ),
+                    _buildRoomStatusPill(
+                      label: '${busyRooms.length} occupied',
+                      backgroundColor: const Color(0xFFFFF1F1),
+                      textColor: const Color(0xFFC23B3B),
+                    ),
+                  ],
+                ),
+                if (availableRooms.isNotEmpty) ...[
+                  12.verticalSpace,
+                  CustomText(
+                    text: 'Tap a free room',
+                    fontSize: 12,
+                    fontWeight: AppWeights.w600,
+                    color: const Color(0xFF61748E),
+                  ),
+                  8.verticalSpace,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: availableRooms
+                        .map(
+                          (room) => InkWell(
+                            onTap: () {
+                              roomController.text = room;
+                              roomController.selection =
+                                  TextSelection.fromPosition(
+                                    TextPosition(offset: room.length),
+                                  );
+                            },
+                            borderRadius: BorderRadius.circular(999),
+                            child: Ink(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 9,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: const Color(0xFFCFE0D5),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.check_circle_outline_rounded,
+                                    size: 14,
+                                    color: Color(0xFF157347),
+                                  ),
+                                  6.horizontalSpace,
+                                  Text(
+                                    room,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF157347),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+                if (busyRooms.isNotEmpty) ...[
+                  12.verticalSpace,
+                  CustomText(
+                    text: 'Already occupied',
+                    fontSize: 12,
+                    fontWeight: AppWeights.w600,
+                    color: const Color(0xFF61748E),
+                  ),
+                  8.verticalSpace,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: busyRooms
+                        .map(
+                          (room) => _buildRoomStatusPill(
+                            label: room,
+                            backgroundColor: const Color(0xFFFFF1F1),
+                            textColor: const Color(0xFFC23B3B),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
+                if (roomConflictMessage != null) ...[
+                  12.verticalSpace,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3F3),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFF2C5C5)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Color(0xFFC23B3B),
+                          size: 18,
+                        ),
+                        8.horizontalSpace,
+                        Expanded(
+                          child: CustomText(
+                            text: roomConflictMessage,
+                            color: const Color(0xFFA23A3A),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Widget _buildRoomStatusPill({
+    required String label,
+    required Color backgroundColor,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
       ),
     );
   }
@@ -273,30 +979,37 @@ class AdminDashboardController extends GetxController
     return Row(
       children: [
         Expanded(
-          child: CustomMaterialButton(
+          child: CustomButton(
             borderColor: AppColors.primary,
             onPressed: () {
               Get.back();
             },
             text: AppStrings.cancel,
             color: AppColors.white,
-            borderRadius: 10,
+            borderRadius: 14,
             height: 57.h,
             textColor: AppColors.primary,
           ),
         ),
         10.horizontalSpace,
         Expanded(
-          child: CustomMaterialButton(
+          child: CustomButton(
             onPressed: onConfirm,
             text: confirmText,
             color: AppColors.primary,
-            borderRadius: 10,
+            borderRadius: 14,
             height: 57.h,
             textColor: AppColors.white,
           ),
         ),
       ],
+    );
+  }
+
+  void _showAdminBottomSheet({required Widget child, double radius = 25}) {
+    Get.bottomSheet(
+      _buildBottomSheetContainer(radius: radius, child: child),
+      isScrollControlled: true,
     );
   }
 
@@ -306,14 +1019,13 @@ class AdminDashboardController extends GetxController
       title: AppStrings.addTimetableEntry,
       subtitle: AppStrings.CreateTimetableEntry,
       confirmText: AppStrings.save,
-      onSubmit: () {
-        saveData();
-      },
+      onSubmit: saveData,
     );
   }
 
   Future<void> openEditTimetableBottomSheet(TimetableModel timetable) async {
     resetTimetableForm();
+    editingTimetableId.value = timetable.id;
     subjectController.text = timetable.subject;
     roomController.text = timetable.room;
     dayNotifier.value = timetable.day;
@@ -321,16 +1033,16 @@ class AdminDashboardController extends GetxController
     shiftNotifier.value = timetable.shift;
     _setTimeRangeFromValue(timetable.time);
 
-    final teachers = await teachersStream.first;
-    final departments = await departmentsStream.first;
+    final teacherItems = await _resolveTeachers();
+    final departmentItems = await _resolveDepartments();
 
     timetableTeacherNotifier.value = _findTeacherByIdOrName(
-      teachers,
+      teacherItems,
       teacherId: timetable.teacherId,
       teacherName: timetable.teacher,
     );
     timetableDepartmentNotifier.value = _findDepartmentByIdOrName(
-      departments,
+      departmentItems,
       departmentId: timetable.departmentId,
       departmentName: timetable.department,
     );
@@ -351,212 +1063,119 @@ class AdminDashboardController extends GetxController
     required String confirmText,
     required VoidCallback onSubmit,
   }) {
-    Get.bottomSheet(
-      _buildBottomSheetContainer(
-        radius: 25,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CustomText(
-              text: title,
-              fontSize: AppSizes.s20,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomText(text: subtitle, color: AppColors.grey),
-            20.verticalSpace,
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomText(
-                        isRequired: true,
-                        text: AppStrings.day,
-                        fontSize: AppSizes.s14,
-                        fontWeight: AppWeights.bold,
-                      ),
-                      5.verticalSpace,
-                      CustomDropdown<String>(
-                        items: days,
-                        valueListenable: dayNotifier,
-                        hintText: AppStrings.dayHint,
-                        itemLabel: (item) => item,
-                        onChanged: (value) {
-                          dayNotifier.value = value;
-                        },
-                      ),
-                    ],
-                  ),
+    _showAdminBottomSheet(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildBottomSheetHeader(title: title, subtitle: subtitle),
+          22.verticalSpace,
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionLabel(AppStrings.day, isRequired: true),
+                    6.verticalSpace,
+                    CustomDropdown<String>(
+                      items: days,
+                      valueListenable: dayNotifier,
+                      hintText: AppStrings.dayHint,
+                      itemLabel: (item) => item,
+                      onChanged: (value) {
+                        dayNotifier.value = value;
+                      },
+                    ),
+                  ],
                 ),
-                10.horizontalSpace,
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomText(
-                        isRequired: true,
-                        text: AppStrings.time,
-                        fontSize: AppSizes.s14,
-                        fontWeight: AppWeights.bold,
-                      ),
-                      5.verticalSpace,
-                      buildTimeRange(),
-                    ],
-                  ),
+              ),
+              10.horizontalSpace,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionLabel(AppStrings.time, isRequired: true),
+                    6.verticalSpace,
+                    buildTimeRange(),
+                  ],
                 ),
-              ],
-            ),
-            12.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.subject,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            8.verticalSpace,
-            CustomTextFormField(
-              borderRadius: BorderRadius.circular(10),
-              hintText: AppStrings.subjectHint,
-              controller: subjectController,
-            ),
-            8.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.teacher,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            8.verticalSpace,
-            StreamBuilder<List<TeacherModel>>(
-              stream: teachersStream,
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const CircularProgressIndicator();
-                }
-
-                final teacherList = snapshot.data!;
-                _syncSelectedTeacher(teacherList);
-
-                return CustomDropdown<TeacherModel>(
-                  items: teacherList,
-                  itemLabel: (item) => item.teacherName,
-                  valueListenable: timetableTeacherNotifier,
-                  hintText: AppStrings.teacherNameHint,
-                  onChanged: (value) {
-                    timetableTeacherNotifier.value = value;
-                  },
-                );
-              },
-            ),
-            8.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.room,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            8.verticalSpace,
-            CustomTextFormField(
-              borderRadius: BorderRadius.circular(10),
-              hintText: AppStrings.roomHint,
-              controller: roomController,
-            ),
-            12.verticalSpace,
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomText(
-                        isRequired: true,
-                        text: AppStrings.dept,
-                        fontSize: AppSizes.s14,
-                        fontWeight: AppWeights.bold,
-                      ),
-                      5.verticalSpace,
-                      StreamBuilder<List<DepartmentModel>>(
-                        stream: departmentsStream,
-                        builder: (context, snapshot) {
-                          if (!snapshot.hasData) {
-                            return const CircularProgressIndicator();
-                          }
-
-                          final departmentList = snapshot.data!;
-                          _syncSelectedDepartment(
-                            timetableDepartmentNotifier,
-                            departmentList,
-                          );
-
-                          return CustomDropdown<DepartmentModel>(
-                            items: departmentList,
-                            itemLabel: (item) => item.depName,
-                            valueListenable: timetableDepartmentNotifier,
-                            onChanged: (value) {
-                              timetableDepartmentNotifier.value = value;
-                            },
-                            hintText: AppStrings.teacherDeptHint,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+              ),
+            ],
+          ),
+          14.verticalSpace,
+          _buildSectionLabel(AppStrings.subject, isRequired: true),
+          8.verticalSpace,
+          CustomTextFormField(
+            hintText: AppStrings.subjectHint,
+            controller: subjectController,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.teacher, isRequired: true),
+          8.verticalSpace,
+          _buildTeacherSelector(),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.room, isRequired: true),
+          8.verticalSpace,
+          _buildRoomFieldSection(),
+          14.verticalSpace,
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionLabel(AppStrings.dept, isRequired: true),
+                    6.verticalSpace,
+                    _buildDepartmentSelector(
+                      notifier: timetableDepartmentNotifier,
+                      hintText: AppStrings.teacherDeptHint,
+                      emptyMessage:
+                          'Add a department first to map timetable entries.',
+                    ),
+                  ],
                 ),
-                10.horizontalSpace,
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomText(
-                        isRequired: true,
-                        text: AppStrings.semester,
-                        fontSize: AppSizes.s14,
-                        fontWeight: AppWeights.bold,
-                      ),
-                      5.verticalSpace,
-                      CustomDropdown<String>(
-                        items: semesters,
-                        valueListenable: semesterNotifier,
-                        hintText: AppStrings.semesterHint,
-                        itemLabel: (item) => item,
-                        onChanged: (value) {
-                          semesterNotifier.value = value;
-                        },
-                      ),
-                    ],
-                  ),
+              ),
+              10.horizontalSpace,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionLabel(AppStrings.semester, isRequired: true),
+                    6.verticalSpace,
+                    CustomDropdown<String>(
+                      items: semesters,
+                      valueListenable: semesterNotifier,
+                      hintText: AppStrings.semesterHint,
+                      itemLabel: (item) => item,
+                      onChanged: (value) {
+                        semesterNotifier.value = value;
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            10.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.shift,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            8.verticalSpace,
-            CustomDropdown<String>(
-              width: double.infinity,
-              items: shifts,
-              valueListenable: shiftNotifier,
-              hintText: AppStrings.shiftHint,
-              itemLabel: (item) => item,
-              onChanged: (value) {
-                shiftNotifier.value = value;
-              },
-            ),
-            20.verticalSpace,
-            _buildBottomSheetActions(
-              confirmText: confirmText,
-              onConfirm: onSubmit,
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+          12.verticalSpace,
+          _buildSectionLabel(AppStrings.shift, isRequired: true),
+          8.verticalSpace,
+          CustomDropdown<String>(
+            width: double.infinity,
+            items: shifts,
+            valueListenable: shiftNotifier,
+            hintText: AppStrings.shiftHint,
+            itemLabel: (item) => item,
+            onChanged: (value) {
+              shiftNotifier.value = value;
+            },
+          ),
+          22.verticalSpace,
+          _buildBottomSheetActions(
+            confirmText: confirmText,
+            onConfirm: onSubmit,
+          ),
+        ],
       ),
-      isScrollControlled: true,
     );
   }
 
@@ -566,7 +1185,7 @@ class AdminDashboardController extends GetxController
         onTap: pickTimeRange,
         child: Container(
           height: 57.h,
-          width: 400.w,
+          width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
             border: Border.fromBorderSide(
@@ -584,7 +1203,7 @@ class AdminDashboardController extends GetxController
                     : "${startTime.value} - ${endTime.value}",
                 style: TextStyle(fontSize: 12.sp, fontWeight: AppWeights.w600),
               ),
-              Icon(AppIcons.timer, size: AppSizes.s22),
+              const Icon(AppIcons.timer, size: AppSizes.s22),
             ],
           ),
         ),
@@ -620,15 +1239,31 @@ class AdminDashboardController extends GetxController
 
     if (dayNotifier.value == null) errors.add("Day");
     if (startTime.value.isEmpty) errors.add("Time");
-    if (subjectController.text.isEmpty) errors.add("Subject");
+    if (subjectController.text.trim().isEmpty) errors.add("Subject");
     if (timetableTeacherNotifier.value == null) errors.add("Teacher");
-    if (roomController.text.isEmpty) errors.add("Room");
+    if (roomController.text.trim().isEmpty) errors.add("Room");
     if (timetableDepartmentNotifier.value == null) errors.add("Department");
     if (semesterNotifier.value == null) errors.add("Semester");
     if (shiftNotifier.value == null) errors.add("Shift");
 
     if (errors.isNotEmpty) {
       AppSnackbar.error("Missing Fields", "Please fill: ${errors.join(", ")}");
+      return false;
+    }
+
+    if (_parseTimeRange("${startTime.value} - ${endTime.value}") == null) {
+      AppSnackbar.error(
+        "Invalid Time",
+        "Please select a valid time range where the end time is after the start time.",
+      );
+      return false;
+    }
+
+    final roomConflictMessage = currentRoomConflictMessage(
+      excludeTimetableId: editingTimetableId.value,
+    );
+    if (roomConflictMessage != null) {
+      AppSnackbar.error("Room Unavailable", roomConflictMessage);
       return false;
     }
 
@@ -642,7 +1277,6 @@ class AdminDashboardController extends GetxController
 
     try {
       await _timetableService.addTimetable(timetableModel);
-
       Get.back();
       AppSnackbar.success("Success", "Timetable Saved Successfully");
       resetTimetableForm();
@@ -658,7 +1292,6 @@ class AdminDashboardController extends GetxController
 
     try {
       await _timetableService.updateTimetable(id, timetableModel);
-
       Get.back();
       AppSnackbar.success("Updated", "Timetable Updated Successfully");
       resetTimetableForm();
@@ -670,74 +1303,52 @@ class AdminDashboardController extends GetxController
   void openDepartmentBottomSheet() {
     resetDepartmentForm();
 
-    Get.bottomSheet(
-      _buildBottomSheetContainer(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              AppStrings.addDept,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            8.verticalSpace,
-            CustomText(text: AppStrings.addNewDept),
-            30.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.deptName,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-              borderRadius: BorderRadius.circular(10),
-              hintText: AppStrings.deptName,
-              controller: deptController,
-            ),
-            8.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.deptCode,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-                            borderRadius: BorderRadius.circular(10),
-              hintText: AppStrings.deptHint,
-              controller: deptCodeController,
-            ),
-            8.verticalSpace,
-            CustomText(
-              text: AppStrings.deptDescription,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-              borderRadius: BorderRadius.circular(10),
-              maxLines: 3,
-              hintText: AppStrings.deptDescription,
-              controller: descriptionController,
-            ),
-            15.verticalSpace,
-            _buildBottomSheetActions(
-              confirmText: AppStrings.save,
-              onConfirm: saveDepartment,
-            ),
-          ],
-        ),
+    _showAdminBottomSheet(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildBottomSheetHeader(
+            title: AppStrings.addDept,
+            subtitle: AppStrings.addNewDept,
+          ),
+          22.verticalSpace,
+          _buildSectionLabel(AppStrings.deptName, isRequired: true),
+          6.verticalSpace,
+          CustomTextFormField(
+            hintText: AppStrings.deptName,
+            controller: deptController,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.deptCode, isRequired: true),
+          6.verticalSpace,
+          CustomTextFormField(
+            hintText: AppStrings.deptHint,
+            controller: deptCodeController,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.deptDescription),
+          6.verticalSpace,
+          CustomTextFormField(
+            maxLines: 3,
+            hintText: AppStrings.deptDescription,
+            controller: descriptionController,
+          ),
+          18.verticalSpace,
+          _buildBottomSheetActions(
+            confirmText: AppStrings.save,
+            onConfirm: saveDepartment,
+          ),
+        ],
       ),
-      isScrollControlled: true,
     );
   }
 
   bool validateDept() {
     final errors = <String>[];
 
-    if (deptController.text.isEmpty) errors.add("Department Name");
-    if (deptCodeController.text.isEmpty) errors.add("Department Code");
+    if (deptController.text.trim().isEmpty) errors.add("Department Name");
+    if (deptCodeController.text.trim().isEmpty) errors.add("Department Code");
 
     if (errors.isNotEmpty) {
       AppSnackbar.error("Missing Fields", "Please fill: ${errors.join(", ")}");
@@ -770,118 +1381,66 @@ class AdminDashboardController extends GetxController
   void openTeacherBottomSheet() {
     resetTeacherForm();
 
-    Get.bottomSheet(
-      _buildBottomSheetContainer(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CustomText(
-              text: AppStrings.addNewTeacher,
-              fontSize: AppSizes.s18,
-              fontWeight: AppWeights.bold,
-            ),
-            8.verticalSpace,
-            CustomText(text: AppStrings.AddTeacherToSystem),
-            30.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.teacherName,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-              borderRadius: BorderRadius.circular(10),
-              hintText: AppStrings.teacherNameHint,
-              controller: teacherNameController,
-            ),
-            8.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.email,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-                     borderRadius: BorderRadius.circular(10),
-              hintText: AppStrings.teacherEmailHint,
-              controller: teacherEmailController,
-            ),
-            8.verticalSpace,
-            CustomText(
-              text: AppStrings.teacherPhone,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-                     borderRadius: BorderRadius.circular(10),
-              hintText: AppStrings.teacherPhoneHit,
-              controller: teacherPhoneController,
-            ),
-            8.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.teacherDept,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            StreamBuilder<List<DepartmentModel>>(
-              stream: departmentsStream,
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const CircularProgressIndicator();
-                }
-
-                final departmentList = snapshot.data!;
-                _syncSelectedDepartment(
-                  teacherDepartmentNotifier,
-                  departmentList,
-                );
-
-                return CustomDropdown<DepartmentModel>(
-                  items: departmentList,
-                  itemLabel: (item) => item.depName,
-                  valueListenable: teacherDepartmentNotifier,
-                  onChanged: (value) {
-                    teacherDepartmentNotifier.value = value;
-                  },
-                  hintText: AppStrings.teacherDeptHint,
-                );
-              },
-            ),
-            8.verticalSpace,
-            CustomText(
-              text: AppStrings.teacherSpecialization,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-                     borderRadius: BorderRadius.circular(10),
-              hintText: AppStrings.teacherSpecializationHint,
-              controller: teacherSpecializationController,
-            ),
-            15.verticalSpace,
-            _buildBottomSheetActions(
-              confirmText: AppStrings.save,
-              onConfirm: saveTeacher,
-            ),
-          ],
-        ),
+    _showAdminBottomSheet(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildBottomSheetHeader(
+            title: AppStrings.addNewTeacher,
+            subtitle: AppStrings.AddTeacherToSystem,
+          ),
+          22.verticalSpace,
+          _buildSectionLabel(AppStrings.teacherName, isRequired: true),
+          6.verticalSpace,
+          CustomTextFormField(
+            hintText: AppStrings.teacherNameHint,
+            controller: teacherNameController,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.email, isRequired: true),
+          6.verticalSpace,
+          CustomTextFormField(
+            hintText: AppStrings.teacherEmailHint,
+            controller: teacherEmailController,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.teacherPhone),
+          6.verticalSpace,
+          CustomTextFormField(
+            hintText: AppStrings.teacherPhoneHit,
+            controller: teacherPhoneController,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.teacherDept, isRequired: true),
+          6.verticalSpace,
+          _buildDepartmentSelector(
+            notifier: teacherDepartmentNotifier,
+            hintText: AppStrings.teacherDeptHint,
+            emptyMessage: 'Create a department first to assign teachers.',
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.teacherSpecialization),
+          6.verticalSpace,
+          CustomTextFormField(
+            hintText: AppStrings.teacherSpecializationHint,
+            controller: teacherSpecializationController,
+          ),
+          18.verticalSpace,
+          _buildBottomSheetActions(
+            confirmText: AppStrings.save,
+            onConfirm: saveTeacher,
+          ),
+        ],
       ),
-      isScrollControlled: true,
     );
   }
 
   bool validateTeacher() {
     final errors = <String>[];
 
-    if (teacherNameController.text.isEmpty) errors.add("Teacher Name");
-    if (teacherEmailController.text.isEmpty) errors.add("Email");
+    if (teacherNameController.text.trim().isEmpty) errors.add("Teacher Name");
+    if (teacherEmailController.text.trim().isEmpty) errors.add("Email");
     if (teacherDepartmentNotifier.value == null) errors.add("Department");
 
     if (errors.isNotEmpty) {
@@ -921,125 +1480,72 @@ class AdminDashboardController extends GetxController
     }
   }
 
-  Future<void> openEditTeacherSheet(
-    String id,
-    Map<String, dynamic> data,
-  ) async {
+  Future<void> openEditTeacherSheet(TeacherModel teacher) async {
     resetTeacherForm();
 
-    teacherNameController.text = data['teacherName'] ?? '';
-    teacherEmailController.text = data['teacherEmail'] ?? '';
-    teacherPhoneController.text = data['teacherPhoneNo'] ?? '';
-    teacherSpecializationController.text = data['teacherSpecialization'] ?? '';
+    teacherNameController.text = teacher.teacherName;
+    teacherEmailController.text = teacher.teacherEmail;
+    teacherPhoneController.text = teacher.teacherPhoneNo;
+    teacherSpecializationController.text = teacher.teacherSpecialization;
 
-    final departments = await departmentsStream.first;
+    final departmentItems = await _resolveDepartments();
     teacherDepartmentNotifier.value = _findDepartmentByIdOrName(
-      departments,
-      departmentId: data['teacherDeptId']?.toString(),
-      departmentName: data['teacherDept']?.toString(),
+      departmentItems,
+      departmentId: teacher.teacherDeptId,
+      departmentName: teacher.teacherDept,
     );
 
-    Get.bottomSheet(
-      _buildBottomSheetContainer(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CustomText(
-              text: AppStrings.editTeacher,
-              fontSize: AppSizes.s18,
-              fontWeight: AppWeights.bold,
-            ),
-            20.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.fullName,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-                     borderRadius: BorderRadius.circular(10),
-              controller: teacherNameController,
-              hintText: AppStrings.fullName,
-            ),
-            10.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.email,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-                     borderRadius: BorderRadius.circular(10),
-              controller: teacherEmailController,
-              hintText: AppStrings.email,
-            ),
-            10.verticalSpace,
-            CustomText(
-              text: AppStrings.teacherPhone,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-                     borderRadius: BorderRadius.circular(10),
-              controller: teacherPhoneController,
-              hintText: AppStrings.teacherPhoneHit,
-            ),
-            10.verticalSpace,
-            CustomText(
-              isRequired: true,
-              text: AppStrings.departments,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            StreamBuilder<List<DepartmentModel>>(
-              stream: departmentsStream,
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const CircularProgressIndicator();
-                }
-
-                final departmentList = snapshot.data!;
-                _syncSelectedDepartment(
-                  teacherDepartmentNotifier,
-                  departmentList,
-                );
-
-                return CustomDropdown<DepartmentModel>(
-                  items: departmentList,
-                  itemLabel: (item) => item.depName,
-                  valueListenable: teacherDepartmentNotifier,
-                  onChanged: (value) {
-                    teacherDepartmentNotifier.value = value;
-                  },
-                  hintText: AppStrings.departments,
-                );
-              },
-            ),
-            10.verticalSpace,
-            CustomText(
-              text: AppStrings.teacherSpecialization,
-              fontSize: AppSizes.s14,
-              fontWeight: AppWeights.bold,
-            ),
-            5.verticalSpace,
-            CustomTextFormField(
-                     borderRadius: BorderRadius.circular(10),
-              controller: teacherSpecializationController,
-              hintText: AppStrings.teacherSpecializationHint,
-            ),
-            20.verticalSpace,
-            _buildBottomSheetActions(
-              confirmText: AppStrings.update,
-              onConfirm: () => updateTeacher(id),
-            ),
-          ],
-        ),
+    _showAdminBottomSheet(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildBottomSheetHeader(
+            title: AppStrings.editTeacher,
+            subtitle: 'Update the teacher profile and save your changes.',
+          ),
+          22.verticalSpace,
+          _buildSectionLabel(AppStrings.fullName, isRequired: true),
+          6.verticalSpace,
+          CustomTextFormField(
+            controller: teacherNameController,
+            hintText: AppStrings.fullName,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.email, isRequired: true),
+          6.verticalSpace,
+          CustomTextFormField(
+            controller: teacherEmailController,
+            hintText: AppStrings.email,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.teacherPhone),
+          6.verticalSpace,
+          CustomTextFormField(
+            controller: teacherPhoneController,
+            hintText: AppStrings.teacherPhoneHit,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.departments, isRequired: true),
+          6.verticalSpace,
+          _buildDepartmentSelector(
+            notifier: teacherDepartmentNotifier,
+            hintText: AppStrings.departments,
+            emptyMessage: 'Create a department first to assign teachers.',
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.teacherSpecialization),
+          6.verticalSpace,
+          CustomTextFormField(
+            controller: teacherSpecializationController,
+            hintText: AppStrings.teacherSpecializationHint,
+          ),
+          18.verticalSpace,
+          _buildBottomSheetActions(
+            confirmText: AppStrings.update,
+            onConfirm: () => updateTeacher(teacher.uid),
+          ),
+        ],
       ),
-      isScrollControlled: true,
     );
   }
 
@@ -1053,77 +1559,69 @@ class AdminDashboardController extends GetxController
     }
 
     try {
-      final data = {
-        "teacherName": teacherNameController.text.trim(),
-        "teacherEmail": teacherEmailController.text.trim(),
-        "teacherPhoneNo": teacherPhoneController.text.trim(),
-        "teacherDept": selectedDepartment.depName,
-        "teacherDeptId": selectedDepartment.id,
-        "teacherSpecialization": teacherSpecializationController.text.trim(),
-      };
+      final model = TeacherModel(
+        uid: id,
+        teacherName: teacherNameController.text.trim(),
+        teacherEmail: teacherEmailController.text.trim(),
+        teacherPhoneNo: teacherPhoneController.text.trim(),
+        teacherDept: selectedDepartment.depName,
+        teacherDeptId: selectedDepartment.id,
+        teacherSpecialization: teacherSpecializationController.text.trim(),
+      );
 
-      await FirebaseFirestore.instance
-          .collection('teachers')
-          .doc(id)
-          .update(data);
+      await _teacherService.updateTeacher(id, model);
 
       Get.back();
       AppSnackbar.success("Updated", "Teacher Updated Successfully");
+      resetTeacherForm();
     } catch (_) {
       AppSnackbar.error("Error", "Update failed");
     }
   }
 
-  void openEditDepartmentSheet(String id, Map<String, dynamic> data) {
+  void openEditDepartmentSheet(DepartmentModel department) {
     resetDepartmentForm();
-    deptController.text = data['depName'] ?? '';
-    deptCodeController.text = data['depCode'] ?? '';
-    descriptionController.text = data['description'] ?? '';
+    deptController.text = department.depName;
+    deptCodeController.text = department.depCode;
+    descriptionController.text = department.description;
 
-    Get.bottomSheet(
-      _buildBottomSheetContainer(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CustomText(
-              text: AppStrings.editDept,
-              fontSize: AppSizes.s18,
-              fontWeight: AppWeights.bold,
-            ),
-            20.verticalSpace,
-            CustomText(isRequired: true, text: AppStrings.deptName),
-            5.verticalSpace,
-            CustomTextFormField(
-                     borderRadius: BorderRadius.circular(10),
-              controller: deptController,
-              hintText: AppStrings.depNameHint,
-            ),
-            10.verticalSpace,
-            CustomText(isRequired: true, text: AppStrings.deptCode),
-            5.verticalSpace,
-            CustomTextFormField(
-                     borderRadius: BorderRadius.circular(10),
-              controller: deptCodeController,
-              hintText: AppStrings.deptHint,
-            ),
-            10.verticalSpace,
-            CustomText(text: AppStrings.deptDescription),
-            5.verticalSpace,
-            CustomTextFormField(
-                     borderRadius: BorderRadius.circular(10),
-              controller: descriptionController,
-              hintText: AppStrings.deptDescription,
-              maxLines: 3,
-            ),
-            20.verticalSpace,
-            _buildBottomSheetActions(
-              confirmText: AppStrings.update,
-              onConfirm: () => updateDepartment(id),
-            ),
-          ],
-        ),
+    _showAdminBottomSheet(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildBottomSheetHeader(
+            title: AppStrings.editDept,
+            subtitle: 'Refresh department details and keep records aligned.',
+          ),
+          22.verticalSpace,
+          _buildSectionLabel(AppStrings.deptName, isRequired: true),
+          6.verticalSpace,
+          CustomTextFormField(
+            controller: deptController,
+            hintText: AppStrings.depNameHint,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.deptCode, isRequired: true),
+          6.verticalSpace,
+          CustomTextFormField(
+            controller: deptCodeController,
+            hintText: AppStrings.deptHint,
+          ),
+          10.verticalSpace,
+          _buildSectionLabel(AppStrings.deptDescription),
+          6.verticalSpace,
+          CustomTextFormField(
+            controller: descriptionController,
+            hintText: AppStrings.deptDescription,
+            maxLines: 3,
+          ),
+          18.verticalSpace,
+          _buildBottomSheetActions(
+            confirmText: AppStrings.update,
+            onConfirm: () => updateDepartment(department.id),
+          ),
+        ],
       ),
-      isScrollControlled: true,
     );
   }
 
@@ -1131,16 +1629,14 @@ class AdminDashboardController extends GetxController
     if (!validateDept()) return;
 
     try {
-      final data = {
-        "depName": deptController.text.trim(),
-        "depCode": deptCodeController.text.trim(),
-        "description": descriptionController.text.trim(),
-      };
+      final model = DepartmentModel(
+        id: id,
+        depName: deptController.text.trim(),
+        depCode: deptCodeController.text.trim(),
+        description: descriptionController.text.trim(),
+      );
 
-      await FirebaseFirestore.instance
-          .collection('departments')
-          .doc(id)
-          .update(data);
+      await _departmentService.updateDepartment(id, model);
 
       Get.back();
       AppSnackbar.success("Updated", "Department Updated Successfully");

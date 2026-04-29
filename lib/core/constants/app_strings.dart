@@ -214,8 +214,9 @@ class AppStrings {
   static const String editTeacher = "Edit Teacher";
   static const String update = "Update";
   static const String editDept = "Edit Department";
-
+  static const String home = "Home";
   static const String delete = "Delete";
   static const String sureToDeleteTimetable =
       "Are you sure you want to delete this timetable?";
+        static const String upComingLecture = "Upcoming Lectures";
 }

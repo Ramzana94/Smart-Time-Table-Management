@@ -1,52 +1,56 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smart_timetable_managment/controllers/admin_dashboard_controller.dart';
 import 'package:smart_timetable_managment/views/dashboard/widgets/dynamic_info_card.dart';
 
+
 class DepartmentScreen extends StatelessWidget {
- DepartmentScreen({super.key});
-final controller = Get.find<AdminDashboardController>();
+  const DepartmentScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: FirebaseFirestore.instance
-          .collection('departments')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    final controller = Get.find<AdminDashboardController>();
 
-        final docs = snapshot.data!.docs;
-
-        if (docs.isEmpty) {
-          return const Center(child: Text("No Departments Found"));
-        }
-
-        return ListView.builder(
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-
-            return DynamicInfoCard(
-              type: CardType.department,
-              title: doc['depName'],
-              subtitle: doc['depCode'],
-              description: doc['description'],
-              classesText: "8 classes",
-              onDelete: () {
-                FirebaseFirestore.instance
-                    .collection('departments')
-                    .doc(doc.id)
-                    .delete();
-              },
-              onEdit: (){
-                controller.openEditDepartmentSheet(doc.id, doc.data());              },
-            );
-          },
+    return Obx(() {
+      if (!controller.isDepartmentsReady.value) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Center(child: Text("Syncing departments...")),
         );
-      },
-    );
+      }
+
+      final departments = controller.departments.toList(growable: false);
+
+      if (departments.isEmpty) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Center(child: Text("No Departments Found")),
+        );
+      }
+
+      return ListView.builder(
+        itemCount: departments.length,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemBuilder: (context, index) {
+          final department = departments[index];
+          final classCount = controller.departmentClassCount(department);
+
+          return DynamicInfoCard(
+            type: CardType.department,
+            title: department.depName,
+            subtitle: department.depCode,
+            description: department.description,
+            classesText: '$classCount classes',
+            onDelete: () {
+              controller.deleteDepartment(department.id);
+            },
+            onEdit: () {
+              controller.openEditDepartmentSheet(department);
+            },
+          );
+        },
+      );
+    });
   }
 }

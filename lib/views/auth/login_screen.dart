@@ -81,7 +81,7 @@ class LoginScreen extends StatelessWidget {
                   ),
         
                   30.verticalSpace,
-                  Obx(()=>CustomMaterialButton(
+                  Obx(()=>CustomButton(
                     isLoading: authController.isLoginLoading.value,
                     onPressed: () {
                       authController.login();
@@ -116,7 +116,7 @@ class LoginScreen extends StatelessWidget {
                     ],
                   ),
                   20.verticalSpace,
-                  Obx(()=>CustomMaterialButton(
+                  Obx(()=>CustomButton(
                     isLoading: authController.isGoogleLoading.value,
                     loaderColor: AppColors.primary,
                     onPressed: () {

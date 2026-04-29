@@ -8,12 +8,19 @@ class DepartmentService {
     await _firestore.collection('departments').add(model.toJson());
   }
 
+  Future<void> updateDepartment(String id, DepartmentModel model) async {
+    await _firestore.collection('departments').doc(id).update(model.toJson());
+  }
+
   Stream<List<DepartmentModel>> getDepartments() {
-    return _firestore.collection('departments').snapshots().map(
-      (snapshot) => snapshot.docs
-          .map((doc) => DepartmentModel.fromJson(doc.data()))
-          .toList(),
-    );
+    return _firestore
+        .collection('departments')
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => DepartmentModel.fromJson(doc.data(), id: doc.id))
+              .toList(),
+        );
   }
 
   Future<void> deleteDepartment(String id) async {

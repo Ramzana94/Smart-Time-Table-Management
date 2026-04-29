@@ -1,53 +1,57 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smart_timetable_managment/controllers/admin_dashboard_controller.dart';
 import 'package:smart_timetable_managment/views/dashboard/widgets/dynamic_info_card.dart';
 
 class TeacherScreen extends StatelessWidget {
-  TeacherScreen({super.key});
- final controller = Get.find<AdminDashboardController>();
+  const TeacherScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: FirebaseFirestore.instance.collection('teachers').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    final controller = Get.find<AdminDashboardController>();
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text("No Teachers Found"));
-        }
-
-        final docs = snapshot.data!.docs;
-
-        return ListView.builder(
-          itemCount: docs.length,
-          itemBuilder: (context, index) {
-            final doc = docs[index];
-
-            return DynamicInfoCard(
-              type: CardType.teacher,
-              title: doc['teacherName'] ?? '',
-              subtitle: doc['teacherDept'] ?? '',
-              email: doc['teacherEmail'] ?? '',
-              phone: doc['teacherPhoneNo'] ?? '',
-              extraInfo: doc['teacherSpecialization'] ?? '',
-              classesText: "2 classes",
-              onDelete: () {
-                FirebaseFirestore.instance
-                    .collection('teachers')
-                    .doc(doc.id)
-                    .delete();
-              },
-              onEdit: () {
-                 controller.openEditTeacherSheet(doc.id, doc.data());
-              },
-            );
-          },
+    return Obx(() {
+      if (!controller.isTeachersReady.value) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Center(child: Text("Syncing teachers...")),
         );
-      },
-    );
+      }
+
+      final teachers = controller.teachers.toList(growable: false);
+
+      if (teachers.isEmpty) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Center(child: Text("No Teachers Found")),
+        );
+      }
+
+      return ListView.builder(
+        itemCount: teachers.length,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemBuilder: (context, index) {
+          final teacher = teachers[index];
+          final classCount = controller.teacherClassCount(teacher);
+
+          return DynamicInfoCard(
+            type: CardType.teacher,
+            title: teacher.teacherName,
+            subtitle: teacher.teacherDept,
+            email: teacher.teacherEmail,
+            phone: teacher.teacherPhoneNo,
+            extraInfo: teacher.teacherSpecialization,
+            classesText: '$classCount classes',
+            onDelete: () {
+              controller.deleteTeacher(teacher.uid);
+            },
+            onEdit: () {
+              controller.openEditTeacherSheet(teacher);
+            },
+          );
+        },
+      );
+    });
   }
 }

@@ -30,7 +30,7 @@ class MySplashScreen extends StatelessWidget {
           Text(
             AppStrings.appName,
             style: TextStyle(
-              fontSize: AppSizes.s40,
+              fontSize: AppSizes.s30,
               fontWeight: FontWeight.w600,
               color: AppColors.white,
             ),

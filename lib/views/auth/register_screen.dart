@@ -1,4 +1,3 @@
-import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:smart_timetable_managment/controllers/auth_controller.dart';
@@ -11,11 +10,13 @@ import 'package:smart_timetable_managment/core/constants/app_strings.dart';
 import 'package:smart_timetable_managment/core/routes/routes_name.dart';
 import 'package:smart_timetable_managment/core/utils/app_validations.dart';
 import 'package:smart_timetable_managment/widgets/app_button.dart';
+import 'package:smart_timetable_managment/widgets/app_dropdown.dart';
 import 'package:smart_timetable_managment/widgets/app_textfield.dart';
 import 'package:get/get.dart';
 
 class MyRegistrationScreen extends StatelessWidget {
   MyRegistrationScreen({super.key});
+  // final ValueNotifier<String?> selectedRole = ValueNotifier(null);
    final AuthController authController = Get.find();
   final signUpFormKey = GlobalKey<FormState>();
 
@@ -58,7 +59,7 @@ class MyRegistrationScreen extends StatelessWidget {
 
                     controller: authController.signupNameController,
                     obscureText: false,
-                    prefixIcon: Icon(AppIcons.person), borderRadius: BorderRadius.circular(10),
+                    prefixIcon: Icon(AppIcons.profile), borderRadius: BorderRadius.circular(10),
                   ),
                   10.verticalSpace,
                   CustomTextFormField(
@@ -89,81 +90,20 @@ class MyRegistrationScreen extends StatelessWidget {
                     validator: AppValidators.validatePassword, borderRadius: BorderRadius.circular(10),),
 
                   16.verticalSpace,
-                  DropdownButtonHideUnderline(
-                    child: DropdownButton2<String>(
-                      isExpanded: true,
-                      hint: const Row(
-                        children: [
-                          Icon(Icons.person, size: AppSizes.s20, color: AppColors.white),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              AppStrings.selectRole,
-                              style: TextStyle(
-                                fontSize: AppSizes.s14,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.black,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      items: authController.roles
-                          .map(
-                            (String item) => DropdownItem<String>(
-                              value: item,
-                              height: 40.h,
-                              child: Text(
-                                item,
-                                style: const TextStyle(
-                                  fontSize: AppSizes.s14,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.grey,
-                                ),
-                              ),
-                            ),
-                          )
-                          .toList(),
+                CustomDropdown(
+                    items: authController.roles,
+                    itemLabel: (role) => role,
+                    // valueListenable: selectedRole,
                       valueListenable: authController.roleNotifier,
-                      onChanged: (value) =>
-                          authController.updateSelectedRole(value),
-                      buttonStyleData: ButtonStyleData(
-                        height: 50.h,
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: AppSizes.s14),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppSizes.s14),
-                          border: Border.all(color: AppColors.grey),
-                          color: AppColors.white,
-                        ),
-                        elevation: 2,
-                      ),
-                      iconStyleData: const IconStyleData(
-                        icon: Icon(Icons.keyboard_arrow_down_outlined),
-                        iconSize: 14,
-                        iconEnabledColor: Colors.yellow,
-                      ),
-                      dropdownStyleData: DropdownStyleData(
-                        maxHeight: 200.h,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(AppSizes.s14),
-                          color: Colors.white,
-                        ),
-                        scrollbarTheme: ScrollbarThemeData(
-                          radius: const Radius.circular(AppSizes.r40),
-                          thickness: WidgetStateProperty.all(6),
-                          thumbVisibility: WidgetStateProperty.all(true),
-                        ),
-                      ),
-                      menuItemStyleData: const MenuItemStyleData(
-                        padding: EdgeInsets.symmetric(horizontal: AppSizes.s14),
-                      ),
-                    ),
+                    onChanged: (value) {
+                      // selectedRole.value = value;
+                          authController.updateSelectedRole(value);
+                    },
+                    hintText: AppStrings.selectRole,
                   ),
                   16.verticalSpace,
                   Obx(
-                    () => CustomMaterialButton(
+                    () => CustomButton(
                       borderRadius: AppSizes.r10,
                       height: 57.h,
                       minWidth: 1.sw,
@@ -203,7 +143,7 @@ class MyRegistrationScreen extends StatelessWidget {
                   ),
                   16.verticalSpace,
                  Obx(()=>
-                  CustomMaterialButton(
+                  CustomButton(
                     height: 57,
                     borderRadius: AppSizes.r10,
                     isLoading: authController.isGoogleLoading.value,
@@ -230,7 +170,7 @@ class MyRegistrationScreen extends StatelessWidget {
                           style: TextStyle(fontSize: AppSizes.s14, color: AppColors.black),
                           children: <TextSpan>[
                             TextSpan(
-                              text: AppStrings.loginSubtitle,
+                              text: AppStrings.login,
                               style: TextStyle(
                                 color: AppColors.primary,
                                 fontSize: AppSizes.s14,

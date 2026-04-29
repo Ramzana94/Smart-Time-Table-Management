@@ -1,5 +1,5 @@
 class TeacherModel {
-  final String id;
+  final String uid;
   final String teacherName;
   final String teacherEmail;
   final String teacherPhoneNo;
@@ -8,7 +8,7 @@ class TeacherModel {
   final String teacherSpecialization;
 
   const TeacherModel({
-    this.id = '',
+    this.uid = '',
     required this.teacherName,
     required this.teacherEmail,
     required this.teacherPhoneNo,
@@ -19,7 +19,7 @@ class TeacherModel {
 
   factory TeacherModel.fromJson(Map<String, dynamic> json, {String id = ''}) {
     return TeacherModel(
-      id: id,
+      uid: id,
       teacherName: json['teacherName'] ?? '',
       teacherEmail: json['teacherEmail'] ?? '',
       teacherPhoneNo: json['teacherPhoneNo'] ?? '',
@@ -39,7 +39,7 @@ class TeacherModel {
     String? teacherSpecialization,
   }) {
     return TeacherModel(
-      id: id ?? this.id,
+      uid: id ?? this.uid,
       teacherName: teacherName ?? this.teacherName,
       teacherEmail: teacherEmail ?? this.teacherEmail,
       teacherPhoneNo: teacherPhoneNo ?? this.teacherPhoneNo,
@@ -52,6 +52,7 @@ class TeacherModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': uid,
       'teacherName': teacherName,
       'teacherEmail': teacherEmail,
       'teacherPhoneNo': teacherPhoneNo,
@@ -65,8 +66,8 @@ class TeacherModel {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! TeacherModel) return false;
-    if (id.isNotEmpty && other.id.isNotEmpty) {
-      return other.id == id;
+    if (uid.isNotEmpty && other.uid.isNotEmpty) {
+      return other.uid == uid;
     }
     return other.teacherName == teacherName &&
         other.teacherEmail == teacherEmail &&
@@ -78,8 +79,8 @@ class TeacherModel {
 
   @override
   int get hashCode {
-    if (id.isNotEmpty) {
-      return id.hashCode;
+    if (uid.isNotEmpty) {
+      return uid.hashCode;
     }
     return Object.hash(
       teacherName,

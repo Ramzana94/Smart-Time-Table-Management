@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:smart_timetable_managment/core/constants/app_colors.dart';
 import 'package:smart_timetable_managment/core/constants/app_sizes.dart';
-class CustomMaterialButton extends StatelessWidget {
+class CustomButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String text;
   final Color color;
@@ -17,7 +17,7 @@ class CustomMaterialButton extends StatelessWidget {
   final Widget? child;
 final Icon? icon;
 final Color? loaderColor;
-  const CustomMaterialButton({
+  const CustomButton({
     super.key,
     required this.onPressed,
     required this.text,

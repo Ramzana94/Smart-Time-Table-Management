@@ -60,16 +60,16 @@ final tabIndex = adminCtrl.currentTabIndex.value;
     );
   }
 
-  if (role == 'Teacher') {
-    return FloatingActionButton.extended(
-      backgroundColor: AppColors.primary,
-      onPressed: () {
-        Get.snackbar("Teacher", "Edit Timetable");
-      },
-      icon: const Icon(Icons.edit),
-      label: const Text("Edit"),
-    );
-  }
+  // if (role == 'Teacher') {
+  //   return FloatingActionButton.extended(
+  //     backgroundColor: AppColors.primary,
+  //     onPressed: () {
+  //       Get.snackbar("Teacher", "Edit Timetable");
+  //     },
+  //     icon: const Icon(Icons.edit),
+  //     label: const Text("Edit"),
+  //   );
+  // }
 
   // 👇 Student (or default)
   return const SizedBox.shrink();
@@ -84,10 +84,12 @@ final tabIndex = adminCtrl.currentTabIndex.value;
         return AdminDasboard();
 
       case 'Teacher':
-        return const TeacherDashboard();
+        return 
+        // const 
+        TeacherDashboard();
 
       default:
-        return const StudentDashboard();
+        return  StudentDashboard();
     }
   }
 }

@@ -1,46 +1,27 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
+import 'package:smart_timetable_managment/controllers/user_session_controller.dart';
+import 'package:smart_timetable_managment/models/user_profile_model.dart';
 
 class NavigationController extends GetxController {
-  var currentIndex = 0.obs;
-  
-  // Role management
-  var userRole = ''.obs;
-  var isLoadingRole = true.obs;
+  final currentIndex = 0.obs;
+  final UserSessionController _userSessionController =
+      Get.find<UserSessionController>();
+  final userRole = 'Student'.obs;
+
+  RxBool get isLoadingRole => _userSessionController.isLoading;
 
   @override
   void onInit() {
     super.onInit();
-    fetchUserRole();
+    userRole.value = _userSessionController.userRole;
+
+    ever<UserProfileModel?>(_userSessionController.currentUser, (profile) {
+      final role = profile?.role.trim() ?? '';
+      userRole.value = role.isEmpty ? 'Student' : role;
+    });
   }
 
   void changeIndex(int index) {
     currentIndex.value = index;
-  }
-
-  // Fetch role from Firestore
-  Future<void> fetchUserRole() async {
-    try {
-      isLoadingRole.value = true;
-      User? user = FirebaseAuth.instance.currentUser;
-      
-      if (user != null) {
-        DocumentSnapshot doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (doc.exists && doc.data() != null) {
-          // Store the role, default to 'Student' if missing
-          userRole.value = doc['role'] ?? 'Student'; 
-        }
-      }
-    } catch (e) {
-      print("Error fetching role: $e");
-      userRole.value = 'Student'; // Safe fallback
-    } finally {
-      isLoadingRole.value = false;
-    }
   }
 }
