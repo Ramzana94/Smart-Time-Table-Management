@@ -21,23 +21,26 @@ import 'package:smart_timetable_managment/widgets/app_dropdown.dart';
 import 'package:smart_timetable_managment/widgets/app_text.dart';
 import 'package:smart_timetable_managment/widgets/app_textfield.dart';
 
-
 class AdminDashboardController extends GetxController
     with GetSingleTickerProviderStateMixin {
   AdminDashboardController({
+    FirebaseAuth? auth,
     DepartmentService? departmentService,
     TeacherService? teacherService,
     TimetableService? timetableService,
-  }) : _departmentService = departmentService ?? DepartmentService(),
+  }) : _auth = auth ?? FirebaseAuth.instance,
+       _departmentService = departmentService ?? DepartmentService(),
        _teacherService = teacherService ?? TeacherService(),
        _timetableService = timetableService ?? TimetableService();
 
+  final FirebaseAuth _auth;
   final DepartmentService _departmentService;
   final TeacherService _teacherService;
   final TimetableService _timetableService;
 
   final departments = <DepartmentModel>[].obs;
   final teachers = <TeacherModel>[].obs;
+  final allTimetableEntries = <TimetableModel>[].obs;
   final timetableEntries = <TimetableModel>[].obs;
 
   final isDepartmentsReady = false.obs;
@@ -60,7 +63,8 @@ class AdminDashboardController extends GetxController
   final editingTimetableId = RxnString();
   final currentTabIndex = 0.obs;
 
-  final subjectController = TextEditingController();
+  final courseTitleController = TextEditingController();
+  final courseCodeController = TextEditingController();
   final roomController = TextEditingController();
   final deptController = TextEditingController();
   final deptCodeController = TextEditingController();
@@ -73,32 +77,13 @@ class AdminDashboardController extends GetxController
   final days = const ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   final semesters = const ["1", "2", "3", "4", "5", "6", "7", "8"];
   final shifts = const ["Morning", "Evening"];
-  List<TimetableModel> get upcomingLectures => teacherTimetable;
-  List<TimetableModel> get todayLectures {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return [];
-    final today = DateTime.now().weekday;
-
-    final days = [
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-      "Sunday",
-    ];
-
-    return teacherTimetable
-        .where((e) => e.day.toLowerCase() == days[today - 1].toLowerCase())
-        .toList();
-  }
-
   late final TabController tabController;
 
   StreamSubscription<List<DepartmentModel>>? _departmentSubscription;
   StreamSubscription<List<TeacherModel>>? _teacherSubscription;
   StreamSubscription<List<TimetableModel>>? _timetableSubscription;
+  StreamSubscription<User?>? _authSubscription;
+  String _activeUserId = '';
 
   Stream<List<DepartmentModel>> get departmentsStream =>
       _departmentService.getDepartments();
@@ -109,8 +94,7 @@ class AdminDashboardController extends GetxController
   Stream<List<TimetableModel>> get timetableStream =>
       _timetableService.getTimetable();
 
-  // int get totalClassCount => timetableEntries.length;
-  int get totalClassCount => teacherTimetable.length;
+  int get totalClassCount => timetableEntries.length;
 
   int get totalTeacherCount => teachers.length;
 
@@ -146,11 +130,16 @@ class AdminDashboardController extends GetxController
       vsync: this,
       initialIndex: currentTabIndex.value,
     );
-    _bindAdminStreams();
+    _authSubscription = _auth.authStateChanges().listen(
+      _handleAuthChanged,
+      onError: (_) => _handleAuthChanged(null),
+    );
+    _handleAuthChanged(_auth.currentUser);
   }
 
   @override
   void onClose() {
+    _authSubscription?.cancel();
     _departmentSubscription?.cancel();
     _teacherSubscription?.cancel();
     _timetableSubscription?.cancel();
@@ -161,7 +150,8 @@ class AdminDashboardController extends GetxController
     teacherDepartmentNotifier.dispose();
     semesterNotifier.dispose();
     shiftNotifier.dispose();
-    subjectController.dispose();
+    courseTitleController.dispose();
+    courseCodeController.dispose();
     roomController.dispose();
     deptController.dispose();
     deptCodeController.dispose();
@@ -173,12 +163,50 @@ class AdminDashboardController extends GetxController
     super.onClose();
   }
 
-  List<TimetableModel> get teacherTimetable {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+  void _handleAuthChanged(User? user) {
+    final nextUserId = user?.uid ?? '';
+    if (_activeUserId == nextUserId) {
+      return;
+    }
 
-    if (uid == null) return [];
+    _activeUserId = nextUserId;
+    _cancelAdminSubscriptions();
+    _resetAdminState();
 
-    return timetableEntries.where((e) => e.teacherId == uid).toList();
+    if (user == null) {
+      return;
+    }
+
+    _bindAdminStreams();
+  }
+
+  void _cancelAdminSubscriptions() {
+    _departmentSubscription?.cancel();
+    _teacherSubscription?.cancel();
+    _timetableSubscription?.cancel();
+    _departmentSubscription = null;
+    _teacherSubscription = null;
+    _timetableSubscription = null;
+  }
+
+  void _resetAdminState() {
+    departments.clear();
+    teachers.clear();
+    allTimetableEntries.clear();
+    timetableEntries.clear();
+
+    isDepartmentsReady.value = false;
+    isTeachersReady.value = false;
+    isTimetableReady.value = false;
+
+    currentTabIndex.value = 0;
+    if (tabController.index != 0) {
+      tabController.animateTo(0);
+    }
+
+    resetDepartmentForm();
+    resetTeacherForm();
+    resetTimetableForm();
   }
 
   void _bindAdminStreams() {
@@ -188,6 +216,7 @@ class AdminDashboardController extends GetxController
         isDepartmentsReady.value = true;
         _syncSelectedDepartment(timetableDepartmentNotifier, items);
         _syncSelectedDepartment(teacherDepartmentNotifier, items);
+        _syncAdminTimetableEntries();
       },
       onError: (_) {
         isDepartmentsReady.value = true;
@@ -199,6 +228,7 @@ class AdminDashboardController extends GetxController
         teachers.assignAll(items);
         isTeachersReady.value = true;
         _syncSelectedTeacher(items);
+        _syncAdminTimetableEntries();
       },
       onError: (_) {
         isTeachersReady.value = true;
@@ -207,13 +237,67 @@ class AdminDashboardController extends GetxController
 
     _timetableSubscription = timetableStream.listen(
       (items) {
-        timetableEntries.assignAll(items);
+        allTimetableEntries.assignAll(items);
+        _syncAdminTimetableEntries();
         isTimetableReady.value = true;
       },
       onError: (_) {
         isTimetableReady.value = true;
       },
     );
+  }
+
+  void _syncAdminTimetableEntries() {
+    if (allTimetableEntries.isEmpty) {
+      timetableEntries.clear();
+      return;
+    }
+
+    final departmentIds = departments
+        .map((department) => _normalize(department.id))
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    final departmentNames = departments
+        .map((department) => _normalize(department.depName))
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    final teacherIds = teachers
+        .map((teacher) => _normalize(teacher.uid))
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    final teacherNames = teachers
+        .map((teacher) => _normalize(teacher.teacherName))
+        .where((value) => value.isNotEmpty)
+        .toSet();
+
+    final hasDepartmentScope =
+        departmentIds.isNotEmpty || departmentNames.isNotEmpty;
+    final hasTeacherScope = teacherIds.isNotEmpty || teacherNames.isNotEmpty;
+
+    if (!hasDepartmentScope && !hasTeacherScope) {
+      timetableEntries.clear();
+      return;
+    }
+
+    final visibleEntries = allTimetableEntries
+        .where((entry) {
+          final matchesDepartment =
+              (departmentIds.isNotEmpty &&
+                  departmentIds.contains(_normalize(entry.departmentId))) ||
+              (departmentNames.isNotEmpty &&
+                  departmentNames.contains(_normalize(entry.department)));
+
+          final matchesTeacher =
+              (teacherIds.isNotEmpty &&
+                  teacherIds.contains(_normalize(entry.teacherId))) ||
+              (teacherNames.isNotEmpty &&
+                  teacherNames.contains(_normalize(entry.teacher)));
+
+          return matchesDepartment || matchesTeacher;
+        })
+        .toList(growable: false);
+
+    timetableEntries.assignAll(visibleEntries);
   }
 
   void changeTab(int index) {
@@ -241,7 +325,8 @@ class AdminDashboardController extends GetxController
   }
 
   void resetTimetableForm() {
-    subjectController.clear();
+    courseTitleController.clear();
+    courseCodeController.clear();
     roomController.clear();
     startTime.value = '';
     endTime.value = '';
@@ -458,7 +543,7 @@ class AdminDashboardController extends GetxController
     }
 
     final firstConflict = conflicts.first;
-    return 'Room ${roomName.trim()} is already booked for ${firstConflict.subject} on ${firstConflict.day} at ${firstConflict.time}.';
+    return 'Room ${roomName.trim()} is already booked for ${firstConflict.courseTitle} on ${firstConflict.day} at ${firstConflict.time}.';
   }
 
   bool _timeRangesOverlap(
@@ -572,7 +657,8 @@ class AdminDashboardController extends GetxController
     return TimetableModel(
       day: selectedDay,
       time: "${startTime.value} - ${endTime.value}",
-      subject: subjectController.text.trim(),
+      courseTitle: courseTitleController.text.trim(),
+      courseCode: courseCodeController.text.trim(),
       teacher: selectedTeacher.teacherName,
       teacherId: selectedTeacher.uid,
       room: roomController.text.trim(),
@@ -580,6 +666,7 @@ class AdminDashboardController extends GetxController
       departmentId: selectedDepartment.id,
       semester: selectedSemester,
       shift: selectedShift,
+     
     );
   }
 
@@ -651,7 +738,7 @@ class AdminDashboardController extends GetxController
 
   Widget _buildSelectionPlaceholder({
     required String message,
-    IconData icon = Icons.info_outline_rounded,
+    IconData icon = AppIcons.info_outline_rounded,
   }) {
     return Container(
       width: double.infinity,
@@ -664,20 +751,20 @@ class AdminDashboardController extends GetxController
       child: Row(
         children: [
           Container(
-            height: 34,
-            width: 34,
+            height: 34.h,
+            width: 34.w,
             decoration: BoxDecoration(
               color: const Color(0xFFE7F0FB),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: AppColors.primary, size: 18),
+            child: Icon(icon, color: AppColors.primary, size: AppSizes.s18),
           ),
           12.horizontalSpace,
           Expanded(
             child: CustomText(
               text: message,
               color: const Color(0xFF496483),
-              fontSize: 13,
+              fontSize: AppSizes.s13,
             ),
           ),
         ],
@@ -692,7 +779,7 @@ class AdminDashboardController extends GetxController
           message: isTeachersReady.value
               ? 'Add a teacher first to assign timetable entries.'
               : 'Teacher list is syncing and will appear here shortly.',
-          icon: Icons.school_outlined,
+          icon: AppIcons.school_outlined,
         );
       }
 
@@ -719,7 +806,7 @@ class AdminDashboardController extends GetxController
           message: isDepartmentsReady.value
               ? emptyMessage
               : 'Department list is syncing and will appear here shortly.',
-          icon: Icons.apartment_outlined,
+          icon: AppIcons.apartment_outlined,
         );
       }
 
@@ -830,7 +917,7 @@ class AdminDashboardController extends GetxController
                   12.verticalSpace,
                   CustomText(
                     text: 'Tap a free room',
-                    fontSize: 12,
+                    fontSize: AppSizes.s12,
                     fontWeight: AppWeights.w600,
                     color: const Color(0xFF61748E),
                   ),
@@ -890,7 +977,7 @@ class AdminDashboardController extends GetxController
                   12.verticalSpace,
                   CustomText(
                     text: 'Already occupied',
-                    fontSize: 12,
+                    fontSize: AppSizes.s12,
                     fontWeight: AppWeights.w600,
                     color: const Color(0xFF61748E),
                   ),
@@ -926,16 +1013,16 @@ class AdminDashboardController extends GetxController
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Icon(
-                          Icons.warning_amber_rounded,
+                          AppIcons.warning_amber_rounded,
                           color: Color(0xFFC23B3B),
-                          size: 18,
+                          size: AppSizes.s18,
                         ),
                         8.horizontalSpace,
                         Expanded(
                           child: CustomText(
                             text: roomConflictMessage,
                             color: const Color(0xFFA23A3A),
-                            fontSize: 12,
+                            fontSize: AppSizes.s12,
                           ),
                         ),
                       ],
@@ -964,7 +1051,7 @@ class AdminDashboardController extends GetxController
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: AppSizes.s12,
           fontWeight: FontWeight.w600,
           color: textColor,
         ),
@@ -1026,7 +1113,8 @@ class AdminDashboardController extends GetxController
   Future<void> openEditTimetableBottomSheet(TimetableModel timetable) async {
     resetTimetableForm();
     editingTimetableId.value = timetable.id;
-    subjectController.text = timetable.subject;
+    courseTitleController.text = timetable.courseTitle;
+    courseCodeController.text = timetable.courseCode;
     roomController.text = timetable.room;
     dayNotifier.value = timetable.day;
     semesterNotifier.value = timetable.semester;
@@ -1103,18 +1191,64 @@ class AdminDashboardController extends GetxController
             ],
           ),
           14.verticalSpace,
-          _buildSectionLabel(AppStrings.subject, isRequired: true),
-          8.verticalSpace,
-          CustomTextFormField(
-            hintText: AppStrings.subjectHint,
-            controller: subjectController,
+
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomText(
+                      text: AppStrings.subject,
+                      isRequired: true,
+                      fontSize: AppSizes.s14,
+                      fontWeight: AppWeights.bold,
+                    ),
+                    5.verticalSpace,
+                    CustomTextFormField(
+                      hintText: AppStrings.subjectHint,
+                      controller: courseTitleController,
+                    ),
+                  ],
+                ),
+              ),
+              10.horizontalSpace,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomText(
+                      text: AppStrings.courseCode,
+                      isRequired: true,
+                      fontSize: AppSizes.s14,
+                      fontWeight: AppWeights.bold,
+                    ),
+                    5.verticalSpace,
+                    CustomTextFormField(
+                      hintText: AppStrings.CourseCodeHint,
+                      controller: courseCodeController,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          10.verticalSpace,
-          _buildSectionLabel(AppStrings.teacher, isRequired: true),
+          8.verticalSpace,
+          CustomText(
+            text: AppStrings.teacher,
+            isRequired: true,
+            fontSize: AppSizes.s14,
+            fontWeight: AppWeights.bold,
+          ),
           8.verticalSpace,
           _buildTeacherSelector(),
           10.verticalSpace,
-          _buildSectionLabel(AppStrings.room, isRequired: true),
+          CustomText(
+            text: AppStrings.room,
+            isRequired: true,
+            fontSize: AppSizes.s14,
+            fontWeight: AppWeights.bold,
+          ),
           8.verticalSpace,
           _buildRoomFieldSection(),
           14.verticalSpace,
@@ -1239,7 +1373,8 @@ class AdminDashboardController extends GetxController
 
     if (dayNotifier.value == null) errors.add("Day");
     if (startTime.value.isEmpty) errors.add("Time");
-    if (subjectController.text.trim().isEmpty) errors.add("Subject");
+    if (courseTitleController.text.trim().isEmpty) errors.add("Subject");
+    if (courseCodeController.text.trim().isEmpty) errors.add("Course Code");
     if (timetableTeacherNotifier.value == null) errors.add("Teacher");
     if (roomController.text.trim().isEmpty) errors.add("Room");
     if (timetableDepartmentNotifier.value == null) errors.add("Department");

@@ -59,7 +59,7 @@ class TimetableSessionCard extends StatelessWidget {
                     ),
                   ),
                 Text(
-                  entry.subject,
+                  entry.courseTitle,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 15,

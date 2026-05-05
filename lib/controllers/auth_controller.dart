@@ -145,7 +145,6 @@ class AuthController extends GetxController {
         String role = doc['role'];
 
         AppSnackbar.success("Success", "Login Successful");
-
         navigateBasedOnRole(role);
       }
     } on FirebaseAuthException catch (e) {
@@ -177,66 +176,128 @@ class AuthController extends GetxController {
     }
   }
 
-  Future<void> continueWithGoogle() async {
-    try {
-      isGoogleLoading.value = true;
+  // continue with google
 
-      final GoogleSignIn googleSignIn = GoogleSignIn.instance;
+  // Future<void> continueWithGoogle() async {
+  //   try {
+  //     isGoogleLoading.value = true;
 
-      await googleSignIn.initialize(
-        serverClientId:
-            "432036284021-v37d07mlvhs1utrss9ovpkt0fom46vdj.apps.googleusercontent.com",
-      );
+  //     final GoogleSignIn googleSignIn = GoogleSignIn.instance;
 
-      final GoogleSignInAccount account = await googleSignIn.authenticate();
+  //     await googleSignIn.initialize(
+  //       serverClientId:
+  //           "669652319600-ndusp7l7asfr6nmrrrlprpp5t5l6577s.apps.googleusercontent.com",
+  //     );
 
-      final googleAuth = await account.authentication;
+  //     final GoogleSignInAccount account = await googleSignIn.authenticate();
 
-      final credential = GoogleAuthProvider.credential(
-        idToken: googleAuth.idToken,
-      );
+  //     final googleAuth = await account.authentication;
 
-      final userCredential = await FirebaseAuth.instance.signInWithCredential(
-        credential,
-      );
+  //     final credential = GoogleAuthProvider.credential(
+  //       idToken: googleAuth.idToken,
+  //     );
 
-      final user = userCredential.user;
+  //     final userCredential = await FirebaseAuth.instance.signInWithCredential(
+  //       credential,
+  //     );
 
-      if (user != null) {
-        final docRef = FirebaseFirestore.instance
-            .collection("users")
-            .doc(user.uid);
+  //     final user = userCredential.user;
 
-        final doc = await docRef.get();
+  //     if (user != null) {
+  //       final docRef = FirebaseFirestore.instance
+  //           .collection("users")
+  //           .doc(user.uid);
 
-        if (!doc.exists) {
-          await docRef.set({
-            "name": user.displayName,
-            "email": user.email,
-            "uid": user.uid,
-            "image": user.photoURL,
-            "createdAt": DateTime.now(),
-          });
+  //       final doc = await docRef.get();
 
-          Future.delayed(Duration(milliseconds: 100), () {
-            showRoleSelectionBottomSheet(user);
-          });
+  //       if (!doc.exists) {
+  //         await docRef.set({
+  //           "name": user.displayName,
+  //           "email": user.email,
+  //           "uid": user.uid,
+  //           "image": user.photoURL,
+  //           "createdAt": DateTime.now(),
+  //         });
+
+  //         Future.delayed(Duration(milliseconds: 100), () {
+  //           showRoleSelectionBottomSheet(user);
+  //         });
+  //       } else {
+  //         final data = doc.data();
+  //         if (data != null && data.containsKey("role")) {
+  //           navigateBasedOnRole(data["role"]);
+  //         } else {
+  //           showRoleSelectionBottomSheet(user);
+  //         }
+  //       }
+  //     }
+  //   } catch (e) {
+  //     debugPrint("Google Sign-In Error: $e");
+  //     AppSnackbar.error("Error", "Google sign-in failed");
+  //   } finally {
+  //     isGoogleLoading.value = false;
+  //   }
+  // }
+Future<void> continueWithGoogle() async {
+  try {
+    isGoogleLoading.value = true;
+
+    final GoogleSignIn googleSignIn = GoogleSignIn.instance;
+
+    // Important: Initialize with serverClientId
+    await googleSignIn.initialize(
+      serverClientId: "669652319600-ndusp7l7asfr6nmrrrlprpp5t5l6577s.apps.googleusercontent.com",
+    );
+
+    // Authenticate
+    final GoogleSignInAccount? account = await googleSignIn.authenticate();
+
+    if (account == null) {
+      AppSnackbar.error("Error", "Google sign-in cancelled");
+      return;
+    }
+
+    final googleAuth = await account.authentication;
+
+    final credential = GoogleAuthProvider.credential(
+      idToken: googleAuth.idToken,
+    );
+
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    final user = userCredential.user;
+
+    if (user != null) {
+      final docRef = FirebaseFirestore.instance.collection("users").doc(user.uid);
+      final doc = await docRef.get();
+
+      if (!doc.exists) {
+        await docRef.set({
+          "name": user.displayName ?? "No Name",
+          "email": user.email,
+          "uid": user.uid,
+          "image": user.photoURL,
+          "createdAt": DateTime.now(),
+        });
+        Future.delayed(const Duration(milliseconds: 100), () {
+          showRoleSelectionBottomSheet(user);
+        });
+      } else {
+        final data = doc.data();
+        if (data != null && data.containsKey("role") && data["role"] != null) {
+          navigateBasedOnRole(data["role"]);
         } else {
-          final data = doc.data();
-          if (data != null && data.containsKey("role")) {
-            navigateBasedOnRole(data["role"]);
-          } else {
-            showRoleSelectionBottomSheet(user);
-          }
+          showRoleSelectionBottomSheet(user);
         }
       }
-    } catch (e) {
-      debugPrint("Google Sign-In Error: $e");
-      AppSnackbar.error("Error", "Google sign-in failed");
-    } finally {
-      isGoogleLoading.value = false;
     }
+  } catch (e) {
+    debugPrint("Google Sign-In Error: $e");
+    AppSnackbar.error("Error", "Google sign-in failed: ${e.toString()}");
+  } finally {
+    isGoogleLoading.value = false;
   }
+}
+
 
   // 🔥 GOOGLE LOGIN
 

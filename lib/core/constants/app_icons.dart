@@ -22,5 +22,12 @@ class AppIcons {
   static const IconData event_note = Icons.event_note;
   static const IconData class_ = Icons.class_;
   static const IconData menu_book_outlined = Icons.menu_book_outlined;
+  static const IconData calendar_view_week_outlined = Icons.calendar_view_week_outlined;
+   static const IconData apartment_outlined = Icons.apartment_outlined;
+    static const IconData school_outlined = Icons.school_outlined;
+    static const IconData schedule_outlined = Icons.schedule_outlined;
+      static const IconData warning_amber_rounded = Icons.warning_amber_rounded;
+      static const IconData info_outline_rounded = Icons.info_outline_rounded;
+        static const IconData dashboard = Icons.dashboard;
 
 }

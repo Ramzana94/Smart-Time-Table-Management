@@ -89,7 +89,7 @@ class TeacherDashboard extends StatelessWidget {
                           Column(
                             children: lectures.map((lecture) {
                               return LectureCard(
-                                title: lecture.subject,
+                                title: lecture.courseTitle,
                                 dayTime: '${lecture.day} • ${lecture.time}',
                                 room: 'Room ${lecture.room}',
                                 department:

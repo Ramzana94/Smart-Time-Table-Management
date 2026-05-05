@@ -69,7 +69,7 @@ class HomeDashboardController extends GetxController {
 
   List<TimetableModel> get homeTimetable {
     return filterEntriesForCurrentUser(
-      _adminDashboardController.timetableEntries,
+      _adminDashboardController.allTimetableEntries,
     );
   }
 
@@ -94,7 +94,7 @@ class HomeDashboardController extends GetxController {
         return rankResult;
       }
 
-      return a.subject.toLowerCase().compareTo(b.subject.toLowerCase());
+      return a.courseTitle.toLowerCase().compareTo(b.courseTitle.toLowerCase());
     });
     return items;
   }
@@ -107,7 +107,7 @@ class HomeDashboardController extends GetxController {
       final name =
           teacher?.teacherName.trim() ?? userProfile?.name.trim() ?? '';
       if (name.isNotEmpty) {
-        return '$name • Teaching schedule';
+        return 'Prof! $name • Teaching schedule';
       }
       return 'Teaching schedule';
     }

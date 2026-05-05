@@ -197,7 +197,7 @@ class AppStrings {
   static const String semesterHint = "eg., 1";
   static const String shift = "Shift";
   static const String day = "Day";
-  static const String subject = "Subject";
+  static const String subject = "Course Title";
   static const String teacher = "Teacher";
   static const String room = "Room";
   static const String subjectHint = "eg., Data Structure";
@@ -219,4 +219,9 @@ class AppStrings {
   static const String sureToDeleteTimetable =
       "Are you sure you want to delete this timetable?";
         static const String upComingLecture = "Upcoming Lectures";
+                static const String filterTimeTable = "Filter TimeTable";
+  static const String reset = "Reset";
+  static const String applyFilter = "Filter Apply Filter";
+   static const String courseCode= "Course Code";
+    static const String CourseCodeHint = "eg.,CS-502";
 }

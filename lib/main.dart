@@ -7,12 +7,23 @@ import 'package:smart_timetable_managment/core/routes/routes.dart';
 import 'package:smart_timetable_managment/core/routes/routes_name.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-
+import 'package:flutter/services.dart';
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+statusBarColor: Colors.transparent,           // Transparent status bar
+      statusBarIconBrightness: Brightness.dark,     // ← Ye important hai (black icons)
+      statusBarBrightness: Brightness.light,        // iOS ke liye
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    )
+  );
+  // // SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
 );
+
   runApp(SmartTimeTable());
 }
 

@@ -2,7 +2,8 @@ class TimetableModel {
   final String id;
   final String day;
   final String time;
-  final String subject;
+  final String courseTitle;
+   final String courseCode;
   final String teacher;
   final String teacherId;
   final String room;
@@ -15,22 +16,55 @@ class TimetableModel {
     this.id = '',
     required this.day,
     required this.time,
-    required this.subject,
+    required this.courseTitle,
     required this.teacher,
     this.teacherId = '',
     required this.room,
     required this.department,
     this.departmentId = '',
     required this.semester,
-    required this.shift,
+    required this.shift, required this.courseCode,
   });
+
+  // ✅ ADD THIS METHOD
+  TimetableModel copyWith({
+    String? id,
+    String? day,
+    String? time,
+    String? courseTitle,
+    String? teacher,
+    String? teacherId,
+    String? room,
+    String? department,
+    String? departmentId,
+    String? semester,
+    String? shift,
+  String? courseCode,
+  }) {
+    return TimetableModel(
+      id: id ?? this.id,
+      day: day ?? this.day,
+      time: time ?? this.time,
+      courseTitle: courseTitle ?? this.courseTitle,
+      courseCode: courseCode ?? this.courseCode,
+      teacher: teacher ?? this.teacher,
+      teacherId: teacherId ?? this.teacherId,
+      room: room ?? this.room,
+      department: department ?? this.department,
+      departmentId: departmentId ?? this.departmentId,
+      semester: semester ?? this.semester,
+      shift: shift ?? this.shift, 
+    
+    );
+  }
 
   factory TimetableModel.fromJson(Map<String, dynamic> json, {String id = ''}) {
     return TimetableModel(
       id: id,
       day: json['day'] ?? '',
       time: json['time'] ?? '',
-      subject: json['subject'] ?? '',
+      courseTitle: json['courseTitle'] ?? '',
+      courseCode: json['courseCode'] ?? '',
       teacher: json['teacher'] ?? '',
       teacherId: json['teacherId'] ?? '',
       room: json['room'] ?? '',
@@ -38,6 +72,7 @@ class TimetableModel {
       departmentId: json['departmentId'] ?? '',
       semester: json['semester'] ?? '',
       shift: json['shift'] ?? '',
+      
     );
   }
 
@@ -45,7 +80,8 @@ class TimetableModel {
     return {
       'day': day,
       'time': time,
-      'subject': subject,
+      'courseTitle': courseTitle,
+       'courseCode': courseCode,
       'teacher': teacher,
       'teacherId': teacherId,
       'room': room,
@@ -53,6 +89,7 @@ class TimetableModel {
       'departmentId': departmentId,
       'semester': semester,
       'shift': shift,
+     
     };
   }
 }

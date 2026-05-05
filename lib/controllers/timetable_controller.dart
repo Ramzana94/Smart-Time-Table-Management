@@ -3,9 +3,12 @@ import 'package:smart_timetable_managment/core/services/timetable_service.dart';
 import 'package:smart_timetable_managment/models/timetable_grid_model.dart';
 import 'package:smart_timetable_managment/models/timetable_model.dart';
 
-
 class TimetableController extends GetxController {
   final TimetableService _timetableService = TimetableService();
+
+  static const String allDepartmentsLabel = 'All Departments';
+  static const String allSemestersLabel = 'All Semesters';
+  static const String allShiftsLabel = 'All Shifts';
 
   final RxnString selectedDepartment = RxnString();
   final RxnString selectedSemester = RxnString();
@@ -56,6 +59,23 @@ class TimetableController extends GetxController {
   void updateShift(String? value) {
     selectedShift.value = value;
   }
+
+  void setFilters({String? department, String? semester, String? shift}) {
+    selectedDepartment.value = department;
+    selectedSemester.value = semester;
+    selectedShift.value = shift;
+  }
+
+  void resetFilters() {
+    selectedDepartment.value = null;
+    selectedSemester.value = null;
+    selectedShift.value = null;
+  }
+
+  bool get hasActiveFilters =>
+      selectedDepartment.value != null ||
+      selectedSemester.value != null ||
+      selectedShift.value != null;
 
   List<String> departmentOptions(List<TimetableModel> entries) {
     final departments =
@@ -108,13 +128,10 @@ class TimetableController extends GetxController {
   }
 
   String? resolveSelection(String? currentValue, List<String> options) {
-    if (options.isEmpty) {
-      return null;
-    }
     if (currentValue != null && options.contains(currentValue)) {
       return currentValue;
     }
-    return options.first;
+    return null;
   }
 
   List<TimetableModel> filterEntries(
@@ -133,61 +150,116 @@ class TimetableController extends GetxController {
     }).toList();
   }
 
-  TimetableGridData buildGrid(List<TimetableModel> entries) {
-    if (entries.isEmpty) {
-      return const TimetableGridData(days: _weekDayOrder, rows: []);
-    }
+  // TimetableGridData buildGrid(List<TimetableModel> entries) {
+  //   if (entries.isEmpty) {
+  //     return const TimetableGridData(days: _weekDayOrder, rows: []);
+  //   }
 
-    final normalizedDays = _orderedDays(entries);
-    final expandedBoundaries = _expandedTimeBoundaries(entries);
+  //   final normalizedDays = _orderedDays(entries);
+  //   final expandedBoundaries = _expandedTimeBoundaries(entries);
 
-    if (expandedBoundaries.length < 2) {
-      return const TimetableGridData(days: _weekDayOrder, rows: []);
-    }
+  //   if (expandedBoundaries.length < 2) {
+  //     return const TimetableGridData(days: _weekDayOrder, rows: []);
+  //   }
 
-    final rows = <TimetableGridRow>[];
+  //   final rows = <TimetableGridRow>[];
 
-    for (var index = 0; index < expandedBoundaries.length - 1; index++) {
-      final slotStart = expandedBoundaries[index];
-      final slotEnd = expandedBoundaries[index + 1];
-      final entriesByDay = <String, List<TimetableModel>>{};
+  //   for (var index = 0; index < expandedBoundaries.length - 1; index++) {
+  //     final slotStart = expandedBoundaries[index];
+  //     final slotEnd = expandedBoundaries[index + 1];
+  //     final entriesByDay = <String, List<TimetableModel>>{};
 
-      for (final day in normalizedDays) {
-        final matchingEntries =
-            entries
-                .where(
-                  (entry) =>
-                      _normalizeDay(entry.day) == day &&
-                      _entryCoversSlot(entry, slotStart, slotEnd),
-                )
-                .toList()
-              ..sort(
-                (a, b) =>
-                    a.subject.toLowerCase().compareTo(b.subject.toLowerCase()),
-              );
-        entriesByDay[day] = matchingEntries;
-      }
+  //     for (final day in normalizedDays) {
+  //       final matchingEntries =
+  //           entries
+  //               .where(
+  //                 (entry) =>
+  //                     _normalizeDay(entry.day) == day &&
+  //                     _entryCoversSlot(entry, slotStart, slotEnd),
+  //               )
+  //               .toList()
+  //             ..sort(
+  //               (a, b) =>
+  //                   a.courseTitle.toLowerCase().compareTo(b.courseTitle.toLowerCase()),
+  //             );
+  //       entriesByDay[day] = matchingEntries;
+  //     }
 
-      rows.add(
-        TimetableGridRow(
-          timeLabel: _formatTimeRange(slotStart, slotEnd),
-          entriesByDay: entriesByDay,
-        ),
-      );
-    }
+  //     rows.add(
+  //       TimetableGridRow(
+  //         timeLabel: _formatTimeRange(slotStart, slotEnd),
+  //         entriesByDay: entriesByDay,
+  //       ),
+  //     );
+  //   }
 
-    return TimetableGridData(days: normalizedDays, rows: rows);
+  //   return TimetableGridData(days: normalizedDays, rows: rows);
+  // }
+
+TimetableGridData buildGrid(List<TimetableModel> entries) {
+  if (entries.isEmpty) {
+    return const TimetableGridData(days: _weekDayOrder, rows: []);
   }
+
+  final normalizedDays = _orderedDays(entries);
+
+  // 👉 Group entries by exact time (NO splitting)
+  final Map<String, Map<String, List<TimetableModel>>> gridMap = {};
+
+  for (final entry in entries) {
+    final day = _normalizeDay(entry.day);
+    final time = entry.time.trim();
+
+    if (!gridMap.containsKey(time)) {
+      gridMap[time] = {};
+    }
+
+    if (!gridMap[time]!.containsKey(day)) {
+      gridMap[time]![day] = [];
+    }
+
+    gridMap[time]![day]!.add(entry);
+  }
+
+  // 👉 Sort time slots properly
+  final sortedTimes = gridMap.keys.toList()
+    ..sort((a, b) {
+      final aRange = _parseTimeRange(a);
+      final bRange = _parseTimeRange(b);
+
+      if (aRange == null || bRange == null) return 0;
+      return aRange.start.compareTo(bRange.start);
+    });
+
+  final rows = sortedTimes.map((time) {
+    final entriesByDay = <String, List<TimetableModel>>{};
+
+    for (final day in normalizedDays) {
+      entriesByDay[day] = gridMap[time]?[day] ?? [];
+    }
+
+    return TimetableGridRow(
+      timeLabel: time, // 👉 EXACT same time (no formatting)
+      entriesByDay: entriesByDay,
+    );
+  }).toList();
+
+  return TimetableGridData(days: normalizedDays, rows: rows);
+}
+
+
+
 
   int totalSessions(List<TimetableModel> entries) {
     return entries.length;
   }
 
   List<String> _orderedDays(List<TimetableModel> entries) {
-    final availableDays = entries
-        .map((entry) => _normalizeDay(entry.day))
-        .where((value) => value.isNotEmpty)
-        .toSet();
+    final availableDays =
+        entries
+            .map((entry) => _normalizeDay(entry.day))
+            .where((value) => value.isNotEmpty)
+            .toSet();
 
     final extraDays =
         availableDays.where((day) => !_weekDayOrder.contains(day)).toList()
@@ -196,70 +268,95 @@ class TimetableController extends GetxController {
     return [..._weekDayOrder, ...extraDays];
   }
 
-  List<int> _expandedTimeBoundaries(List<TimetableModel> entries) {
-    final parsedRanges = entries
-        .map((entry) => _parseTimeRange(entry.time))
-        .whereType<({int start, int end})>()
-        .where((range) => range.end > range.start)
-        .toList();
+  // List<int> _expandedTimeBoundaries(List<TimetableModel> entries) {
+  //   final parsedRanges =
+  //       entries
+  //           .map((entry) => _parseTimeRange(entry.time))
+  //           .whereType<({int start, int end})>()
+  //           .where((range) => range.end > range.start)
+  //           .toList();
 
-    if (parsedRanges.isEmpty) {
-      return const <int>[];
-    }
+  //   if (parsedRanges.isEmpty) {
+  //     return const <int>[];
+  //   }
 
-    final sortedBoundaries = <int>{
-      for (final range in parsedRanges) range.start,
-      for (final range in parsedRanges) range.end,
-    }.toList()..sort();
+  //   final sortedBoundaries =
+  //       <int>{
+  //           for (final range in parsedRanges) range.start,
+  //           for (final range in parsedRanges) range.end,
+  //         }.toList()
+  //         ..sort();
 
-    final slotStep = _slotStepMinutes(parsedRanges);
-    if (slotStep == null || sortedBoundaries.length < 2) {
-      return sortedBoundaries;
-    }
+  //   final slotStep = _slotStepMinutes(parsedRanges);
+  //   if (slotStep == null || sortedBoundaries.length < 2) {
+  //     return sortedBoundaries;
+  //   }
 
-    final expanded = <int>[sortedBoundaries.first];
+  //   final expanded = <int>[sortedBoundaries.first];
 
-    for (var index = 0; index < sortedBoundaries.length - 1; index++) {
-      final current = sortedBoundaries[index];
-      final next = sortedBoundaries[index + 1];
+  //   for (var index = 0; index < sortedBoundaries.length - 1; index++) {
+  //     final current = sortedBoundaries[index];
+  //     final next = sortedBoundaries[index + 1];
 
-      var cursor = current + slotStep;
-      while (cursor < next) {
-        expanded.add(cursor);
-        cursor += slotStep;
-      }
+  //     var cursor = current + slotStep;
+  //     while (cursor < next) {
+  //       expanded.add(cursor);
+  //       cursor += slotStep;
+  //     }
 
-      expanded.add(next);
-    }
+  //     expanded.add(next);
+  //   }
 
-    return expanded.toSet().toList()..sort();
-  }
+  //   return expanded.toSet().toList()..sort();
+  // }
 
-  int? _slotStepMinutes(List<({int start, int end})> ranges) {
-    int? shortestDuration;
 
-    for (final range in ranges) {
-      final duration = range.end - range.start;
-      if (duration <= 0) {
-        continue;
-      }
 
-      if (shortestDuration == null || duration < shortestDuration) {
-        shortestDuration = duration;
-      }
-    }
+// ignore: unused_element
+List<int> _getAllTimeBoundaries(List<TimetableModel> entries) {
+  final boundaries = <int>{};
 
-    return shortestDuration;
-  }
-
-  bool _entryCoversSlot(TimetableModel entry, int slotStart, int slotEnd) {
+  for (final entry in entries) {
     final range = _parseTimeRange(entry.time);
-    if (range == null) {
-      return false;
+    if (range != null && range.end > range.start) {
+      boundaries.add(range.start);
+      boundaries.add(range.end);
     }
-
-    return range.start <= slotStart && range.end >= slotEnd;
   }
+
+  final sorted = boundaries.toList()..sort();
+  return sorted;
+}
+
+  // int? _slotStepMinutes(List<({int start, int end})> ranges) {
+  //   int? shortestDuration;
+
+  //   for (final range in ranges) {
+  //     final duration = range.end - range.start;
+  //     if (duration <= 0) {
+  //       continue;
+  //     }
+
+  //     if (shortestDuration == null || duration < shortestDuration) {
+  //       shortestDuration = duration;
+  //     }
+  //   }
+
+  //   return shortestDuration;
+  // }
+
+
+
+  // bool _entryCoversSlot(TimetableModel entry, int slotStart, int slotEnd) {
+  //   final range = _parseTimeRange(entry.time);
+  //   if (range == null) {
+  //     return false;
+  //   }
+
+  //   return range.start <= slotStart && range.end >= slotEnd;
+  // }
+
+
 
   String _normalizeDay(String value) {
     final trimmed = value.trim();
@@ -288,11 +385,12 @@ class TimetableController extends GetxController {
       return null;
     }
 
-    final parts = trimmed
-        .split('-')
-        .map((part) => part.trim())
-        .where((part) => part.isNotEmpty)
-        .toList();
+    final parts =
+        trimmed
+            .split('-')
+            .map((part) => part.trim())
+            .where((part) => part.isNotEmpty)
+            .toList();
 
     if (parts.length < 2) {
       return null;
@@ -310,22 +408,26 @@ class TimetableController extends GetxController {
     return (start: startMinutes, end: endMinutes);
   }
 
-  String _formatTimeRange(int startMinutes, int endMinutes) {
-    return '${_formatMinutes(startMinutes)} - ${_formatMinutes(endMinutes)}';
-  }
+  // String _formatTimeRange(int startMinutes, int endMinutes) {
+  //   return '${_formatMinutes(startMinutes)} - ${_formatMinutes(endMinutes)}';
+  // }
 
-  String _formatMinutes(int totalMinutes) {
-    final hour24 = totalMinutes ~/ 60;
-    final minute = totalMinutes % 60;
-    final suffix = hour24 >= 12 ? 'PM' : 'AM';
-    var hour12 = hour24 % 12;
-    if (hour12 == 0) {
-      hour12 = 12;
-    }
 
-    final minuteLabel = minute.toString().padLeft(2, '0');
-    return '$hour12:$minuteLabel $suffix';
-  }
+
+  // String _formatMinutes(int totalMinutes) {
+  //   final hour24 = totalMinutes ~/ 60;
+  //   final minute = totalMinutes % 60;
+  //   final suffix = hour24 >= 12 ? 'PM' : 'AM';
+  //   var hour12 = hour24 % 12;
+  //   if (hour12 == 0) {
+  //     hour12 = 12;
+  //   }
+
+  //   final minuteLabel = minute.toString().padLeft(2, '0');
+  //   return '$hour12:$minuteLabel $suffix';
+  // }
+
+
 
   int _parseClockValue(String raw) {
     final value = raw.toUpperCase().replaceAll('.', '').trim();
@@ -359,3 +461,4 @@ class TimetableController extends GetxController {
     return 9999;
   }
 }
+
