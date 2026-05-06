@@ -82,7 +82,7 @@
 //         static const String teacheremailHint = 'e.g, shoaibfarooq@gmail.com';
 //         static const String teacherPhoneHint = 'e.g, +92 313 6754210';
 //         static const String teacherSpecialization = 'e.g, Machine Learning';
-//        static const String deptDescriptionHint = 'e.g, Department of Computer Science'; 
+//        static const String deptDescriptionHint = 'e.g, Department of Computer Science';
 //    static const String deptExp = 'e.g, Zoology';
 //   static const String shift = 'Shift';
 //   static const String addDept = 'Add Department';
@@ -218,10 +218,13 @@ class AppStrings {
   static const String delete = "Delete";
   static const String sureToDeleteTimetable =
       "Are you sure you want to delete this timetable?";
-        static const String upComingLecture = "Upcoming Lectures";
-                static const String filterTimeTable = "Filter TimeTable";
+  static const String upComingLecture = "Upcoming Lectures";
+  static const String filterTimeTable = "Filter TimeTable";
   static const String reset = "Reset";
   static const String applyFilter = "Filter Apply Filter";
-   static const String courseCode= "Course Code";
-    static const String CourseCodeHint = "eg.,CS-502";
+  static const String courseCode = "Course Code";
+  static const String CourseCodeHint = "eg.,CS-502";
+  static const String downloadPdf = 'Download Pdf';
+  static const String weeklyTimetable = 'Weekly Timetable';
+  static const String edit = 'Edit';
 }

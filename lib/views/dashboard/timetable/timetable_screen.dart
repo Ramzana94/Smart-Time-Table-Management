@@ -7,14 +7,15 @@ import 'package:smart_timetable_managment/controllers/navigation_controller.dart
 import 'package:smart_timetable_managment/controllers/timetable_controller.dart';
 import 'package:smart_timetable_managment/core/constants/app_colors.dart';
 import 'package:smart_timetable_managment/core/constants/app_icons.dart';
+import 'package:smart_timetable_managment/core/constants/app_sizes.dart';
 import 'package:smart_timetable_managment/core/constants/app_strings.dart';
+import 'package:smart_timetable_managment/core/constants/app_weight.dart';
 import 'package:smart_timetable_managment/core/services/pdf_service.dart';
 import 'package:smart_timetable_managment/core/utils/app_snack_bar.dart';
-import 'package:smart_timetable_managment/models/timetable_grid_model.dart';
 import 'package:smart_timetable_managment/models/timetable_model.dart';
 import 'package:smart_timetable_managment/views/dashboard/timetable/components/summary_chip.dart';
+import 'package:smart_timetable_managment/widgets/app_text.dart';
 import 'package:smart_timetable_managment/widgets/timetable_schedule_board.dart';
-
 class TimeTableScreen extends StatelessWidget {
   TimeTableScreen({super.key});
 
@@ -49,64 +50,79 @@ class TimeTableScreen extends StatelessWidget {
 
             return Obx(() {
               final role = navCtrl.userRole.value.trim();
-              final normalizedRole = role.toLowerCase();
-              final canManage = normalizedRole == 'admin';
-              final isTeacher = normalizedRole == 'teacher';
-              final isStudent = normalizedRole == 'student';
-              final baseEntries =
-                  isTeacher
-                      ? homeCtrl.filterEntriesForCurrentUser(allEntries)
-                      : allEntries;
+              final canManage = role == 'Admin';
+              final baseEntries = canManage
+                  ? allEntries
+                  : homeCtrl.visibleTimetableEntries(allEntries);
+
+              final departmentOptions = timetableCtrl.departmentOptions(
+                baseEntries,
+              );
+              final activeDepartment = timetableCtrl.validSelectionOrNull(
+                timetableCtrl.selectedDepartment.value,
+                departmentOptions,
+              );
+              final semesterOptions = timetableCtrl.semesterOptions(
+                baseEntries,
+                department: activeDepartment,
+              );
+              final activeSemester = timetableCtrl.validSelectionOrNull(
+                timetableCtrl.selectedSemester.value,
+                semesterOptions,
+              );
+              final shiftOptions = timetableCtrl.shiftOptions(
+                baseEntries,
+                department: activeDepartment,
+                semester: activeSemester,
+              );
+              final activeShift = timetableCtrl.validSelectionOrNull(
+                timetableCtrl.selectedShift.value,
+                shiftOptions,
+              );
 
               final filteredEntries = timetableCtrl.filterEntries(
                 baseEntries,
-                department: timetableCtrl.selectedDepartment.value,
-                semester: timetableCtrl.selectedSemester.value,
-                shift: timetableCtrl.selectedShift.value,
+                department: activeDepartment,
+                semester: activeSemester,
+                shift: activeShift,
               );
-              if (isTeacher && homeCtrl.isLoading) {
+              if (!canManage && homeCtrl.isLoading) {
                 return const Center(child: CircularProgressIndicator());
               }
 
               if (allEntries.isEmpty) {
                 return _TimetableStateCard(
                   icon: AppIcons.timetable,
-                  title: 'No timetable entries yet',
-                  subtitle:
-                      isStudent
-                          ? 'The full timetable will appear here once an admin adds classes.'
-                          : 'Your weekly schedule will appear here once classes are added.',
+                  title: 'Timetable not found',
+                  subtitle: canManage
+                      ? 'No timetable has been added yet.'
+                      : 'No timetable was found for this account.',
                   actionLabel: canManage ? 'Add Entry' : null,
                   onPressed: canManage ? adminCtrl.openCreateBottomSheet : null,
                 );
               }
 
-              if (isTeacher || isStudent) {
+              if (role == 'Teacher' || role == 'Student') {
                 final gridData = timetableCtrl.buildGrid(filteredEntries);
                 return SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(16, 20, 16, 110),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        isTeacher ? 'Teaching Timetable' : 'Full Timetable',
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF12284A),
-                        ),
+                      CustomText(
+                        text: role == 'Teacher'
+                            ? 'Teaching Timetable'
+                            : 'Student Timetable',
+                        fontSize: AppSizes.s26,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        isTeacher
-                            ? homeCtrl.headerSubtitle
-                            : 'All departments | Semesters 1-8 | All shifts',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF61748E),
-                        ),
+                      CustomText(
+                        text: homeCtrl.headerSubtitle,
+                        fontSize: AppSizes.s14,
+                        color: Color(0xFF61748E),
                       ),
-                      const SizedBox(height: 10),
+                      4.verticalSpace,
                       Wrap(
                         spacing: 10,
                         runSpacing: 10,
@@ -119,128 +135,73 @@ class TimeTableScreen extends StatelessWidget {
 
                           SummaryChip(
                             icon: AppIcons.apartment_outlined,
-                            label:
-                                timetableCtrl.selectedDepartment.value ??
-                                (isStudent ? 'All Departments' : 'Department'),
+                            label: activeDepartment ?? 'Department',
                           ),
                           SummaryChip(
                             icon: AppIcons.school_outlined,
-                            label:
-                                timetableCtrl.selectedSemester.value != null
-                                    ? 'Semester ${timetableCtrl.selectedSemester.value}'
-                                    : isStudent
-                                    ? 'Semesters 1-8'
-                                    : 'Semester',
+                            label: activeSemester != null
+                                ? 'Semester $activeSemester'
+                                : 'Semester',
                           ),
                           SummaryChip(
-                            icon: AppIcons.school_outlined,
-                            label:
-                                timetableCtrl.selectedShift.value ??
-                                (isStudent ? 'All Shifts' : 'Shift'),
+                            icon: AppIcons.schedule_outlined,
+                            label: activeShift ?? 'Shift',
                           ),
                         ],
                       ),
 
-                      const SizedBox(height: 20),
-                      if (filteredEntries.isNotEmpty) ...[
+                      20.verticalSpace,
+                      if (gridData.isEmpty)
+                        _TimetableStateCard(
+                          icon: AppIcons.event_busy_outlined,
+                          title: 'Timetable not found',
+                          subtitle: role == 'Student'
+                              ? 'No timetable was found for students.'
+                              : homeCtrl.homeNotice ??
+                                    'No timetable was found for this teacher.',
+                        )
+                      else
                         SizedBox(
                           width: double.infinity,
                           child: FilledButton.icon(
-                            onPressed: () {
+                            onPressed: () async {
                               _downloadTimetablePdf(
                                 gridData: gridData,
-                                entries: filteredEntries,
-                                title:
-                                    isStudent
-                                        ? 'Full Timetable'
-                                        : 'Teaching Timetable',
-                                subtitle:
-                                    isStudent
-                                        ? _filterSubtitle(
-                                          department:
-                                              timetableCtrl
-                                                  .selectedDepartment
-                                                  .value,
-                                          semester:
-                                              timetableCtrl
-                                                  .selectedSemester
-                                                  .value,
-                                          shift:
-                                              timetableCtrl.selectedShift.value,
-                                        )
-                                        : null,
-                                department:
-                                    timetableCtrl.selectedDepartment.value,
-                                semester: timetableCtrl.selectedSemester.value,
-                                shift: timetableCtrl.selectedShift.value,
+                                department: activeDepartment,
+                                semester: activeSemester,
+                                shift: activeShift,
                               );
                             },
                             style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF10B981),
+                              backgroundColor: Color(0xFF10B981),
                               foregroundColor: AppColors.white,
                               padding: const EdgeInsets.symmetric(vertical: 13),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
                             ),
-                            icon: const Icon(Icons.download_outlined),
-                            label: const Text('Download PDF'),
+                            icon: Icon(AppIcons.download_outlined),
+                            label: CustomText(
+                              text: AppStrings.downloadPdf,
+                              color: AppColors.white,
+                              fontSize: AppSizes.s14,
+                              fontWeight: AppWeights.w500,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                      ],
-                      if (gridData.isEmpty)
-                        _TimetableStateCard(
-                          icon: Icons.event_busy_outlined,
-                          title:
-                              isStudent
-                                  ? 'No classes found in the full timetable'
-                                  : 'No classes found for your profile',
-                          subtitle:
-                              isStudent
-                                  ? 'The admin timetable has entries, but no valid weekly slots are available yet.'
-                                  : homeCtrl.homeNotice ??
-                                      'Your timetable will appear here once your schedule is linked.',
-                        )
-                      else
-                        TimetableScheduleBoard(
-                          gridData: gridData,
-                          canManage: false,
-                          onSlotTap: (entries) {
-                            _showSlotDetails(entries, false);
-                          },
-                        ),
+                      10.verticalSpace,
+                      TimetableScheduleBoard(
+                        gridData: gridData,
+                        canManage: false,
+                        onSlotTap: (entries) {
+                          _showSlotDetails(entries, false);
+                        },
+                      ),
                     ],
                   ),
                 );
               }
 
-              final departmentOptions = timetableCtrl.departmentOptions(
-                allEntries,
-              );
-              final selectedDepartment = timetableCtrl.resolveSelection(
-                timetableCtrl.selectedDepartment.value,
-                departmentOptions,
-              );
-
-              final semesterOptions = timetableCtrl.semesterOptions(
-                allEntries,
-                department: selectedDepartment,
-              );
-              final selectedSemester = timetableCtrl.resolveSelection(
-                timetableCtrl.selectedSemester.value,
-                semesterOptions,
-              );
-
-              final shiftOptions = timetableCtrl.shiftOptions(
-                allEntries,
-                department: selectedDepartment,
-                semester: selectedSemester,
-              );
-              final selectedShift = timetableCtrl.resolveSelection(
-                timetableCtrl.selectedShift.value,
-                shiftOptions,
-              );
               final gridData = timetableCtrl.buildGrid(filteredEntries);
 
               return SingleChildScrollView(
@@ -248,15 +209,13 @@ class TimeTableScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Weekly Timetable',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF12284A),
-                      ),
+                    CustomText(
+                      text: AppStrings.weeklyTimetable,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF12284A),
                     ),
-                    const SizedBox(height: 18),
+                    18.verticalSpace,
                     Wrap(
                       spacing: 10,
                       runSpacing: 10,
@@ -269,20 +228,18 @@ class TimeTableScreen extends StatelessWidget {
                         if (canManage) ...[
                           SummaryChip(
                             icon: AppIcons.apartment_outlined,
-                            label:
-                                timetableCtrl.selectedDepartment.value ??
-                                'Department',
+                            label: activeDepartment ?? 'Department',
+                          ),
+                          SummaryChip(
+                            icon: AppIcons.school_outlined,
+
+                            label: activeSemester != null
+                                ? 'Semester $activeSemester'
+                                : 'Semester',
                           ),
                           SummaryChip(
                             icon: AppIcons.schedule_outlined,
-                            label:
-                                timetableCtrl.selectedSemester.value != null
-                                    ? 'Semester ${timetableCtrl.selectedSemester.value}'
-                                    : 'Semester',
-                          ),
-                          SummaryChip(
-                            icon: AppIcons.schedule_outlined,
-                            label: timetableCtrl.selectedShift.value ?? 'Shift',
+                            label: activeShift ?? 'Shift',
                           ),
                         ],
                       ],
@@ -290,12 +247,14 @@ class TimeTableScreen extends StatelessWidget {
                     const SizedBox(height: 20),
                     if (gridData.isEmpty)
                       _TimetableStateCard(
-                        icon: Icons.event_busy_outlined,
-                        title: 'No classes found for this view',
-                        subtitle: 'Try another department, semester, or shift.',
+                        icon: AppIcons.event_busy_outlined,
+                        title: 'Timetable not found',
+                        subtitle:
+                            'No timetable matches the current department, semester, or shift.',
                         actionLabel: canManage ? 'Add Entry' : null,
-                        onPressed:
-                            canManage ? adminCtrl.openCreateBottomSheet : null,
+                        onPressed: canManage
+                            ? adminCtrl.openCreateBottomSheet
+                            : null,
                       )
                     else
                       Column(
@@ -306,16 +265,14 @@ class TimeTableScreen extends StatelessWidget {
                               onPressed: () async {
                                 _downloadTimetablePdf(
                                   gridData: gridData,
-                                  entries: filteredEntries,
-                                  title: 'Weekly Timetable',
-                                  department: selectedDepartment,
-                                  semester: selectedSemester,
-                                  shift: selectedShift,
+                                  department: activeDepartment,
+                                  semester: activeSemester,
+                                  shift: activeShift,
                                 );
                               },
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFF10B981),
-                                foregroundColor: Colors.white,
+                                foregroundColor: AppColors.white,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 13,
                                 ),
@@ -323,8 +280,8 @@ class TimeTableScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                               ),
-                              icon: const Icon(Icons.download_outlined),
-                              label: const Text('Download as PDF'),
+                              icon: Icon(AppIcons.download_outlined),
+                              label: Text('Download as PDF'),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -347,7 +304,7 @@ class TimeTableScreen extends StatelessWidget {
       floatingActionButton: Obx(() {
         final role = navCtrl.userRole.value.trim();
 
-        if (role.toLowerCase() == 'admin') {
+        if (role == 'Admin') {
           return FloatingActionButton(
             shape: const CircleBorder(),
             backgroundColor: AppColors.primary,
@@ -361,10 +318,7 @@ class TimeTableScreen extends StatelessWidget {
   }
 
   void _downloadTimetablePdf({
-    required TimetableGridData gridData,
-    required List<TimetableModel> entries,
-    required String title,
-    String? subtitle,
+    required dynamic gridData,
     String? department,
     String? semester,
     String? shift,
@@ -372,32 +326,21 @@ class TimeTableScreen extends StatelessWidget {
     try {
       _showLoading();
       final pdfService = PdfService();
-      final exportSubtitle =
-          subtitle ??
+      final subtitle =
           '${department ?? 'All Departments'} | Semester ${semester ?? 'All'} | ${shift ?? 'All Shifts'}';
 
       await pdfService.generateAndDownloadTimetable(
         gridData: gridData,
-        entries: entries,
-        title: title,
-        subtitle: exportSubtitle,
+        title: 'Weekly Timetable',
+        subtitle: subtitle,
       );
       _hideLoading();
       AppSnackbar.success('Success', 'Timetable PDF downloaded successfully');
     } catch (e) {
-      _hideLoading();
       AppSnackbar.error('Error', 'Failed to download PDF: $e');
+    } finally {
+      _hideLoading();
     }
-  }
-
-  String _filterSubtitle({
-    String? department,
-    String? semester,
-    String? shift,
-  }) {
-    final semesterLabel =
-        semester == null ? 'Semesters 1-8' : 'Semester $semester';
-    return '${department ?? 'All Departments'} | $semesterLabel | ${shift ?? 'All Shifts'}';
   }
 
   void _showSlotDetails(List<TimetableModel> entries, bool canManage) {
@@ -419,8 +362,8 @@ class TimeTableScreen extends StatelessWidget {
               children: [
                 Center(
                   child: Container(
-                    width: 52,
-                    height: 4,
+                    width: 52.w,
+                    height: 4.h,
                     decoration: BoxDecoration(
                       color: const Color(0xFFD6DEEC),
                       borderRadius: BorderRadius.circular(999),
@@ -442,7 +385,6 @@ class TimeTableScreen extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
-                              // color: Color(0xFF12284A),
                               color: AppColors.primary,
                             ),
                           ),
@@ -476,18 +418,16 @@ class TimeTableScreen extends StatelessWidget {
                     child: _TimetableDetailCard(
                       entry: entry,
                       canManage: canManage,
-                      onEdit:
-                          canManage
-                              ? () {
-                                _openTimetableEdit(entry);
-                              }
-                              : null,
-                      onDelete:
-                          canManage
-                              ? () {
-                                _openDeletePrompt(entry);
-                              }
-                              : null,
+                      onEdit: canManage
+                          ? () {
+                              _openTimetableEdit(entry);
+                            }
+                          : null,
+                      onDelete: canManage
+                          ? () {
+                              _openDeletePrompt(entry);
+                            }
+                          : null,
                     ),
                   ),
                 ),
@@ -521,7 +461,7 @@ class TimeTableScreen extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: AppColors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
@@ -530,8 +470,8 @@ class TimeTableScreen extends StatelessWidget {
             children: [
               Center(
                 child: Container(
-                  width: 52,
-                  height: 4,
+                  width: 52.w,
+                  height: 4.h,
                   decoration: BoxDecoration(
                     color: const Color(0xFFD6DEEC),
                     borderRadius: BorderRadius.circular(999),
@@ -540,19 +480,19 @@ class TimeTableScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Container(
-                height: 56,
-                width: 56,
+                height: 56.h,
+                width: 56.w,
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFEFEF),
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: const Icon(
-                  Icons.delete_outline_rounded,
+                  AppIcons.delete_outline_rounded,
                   color: AppColors.red,
                   size: 28,
                 ),
               ),
-              const SizedBox(height: 18),
+              18.verticalSpace,
               const Text(
                 AppStrings.deleteTimetableEntry,
                 style: TextStyle(
@@ -620,7 +560,7 @@ class TimeTableScreen extends StatelessWidget {
                       child: const Text(AppStrings.cancel),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  12.horizontalSpace,
                   Expanded(
                     child: FilledButton.icon(
                       onPressed: () {
@@ -629,14 +569,14 @@ class TimeTableScreen extends StatelessWidget {
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.red,
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppColors.white,
                         padding: const EdgeInsets.symmetric(vertical: 15),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      icon: const Icon(Icons.delete_outline_rounded),
-                      label: const Text(AppStrings.delete),
+                      icon: Icon(AppIcons.delete_outline_rounded),
+                      label: CustomText(text: AppStrings.delete),
                     ),
                   ),
                 ],
@@ -673,7 +613,7 @@ class _TimetableStateCard extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 520),
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: const Color(0xFFD8E2F0)),
         ),
@@ -681,41 +621,37 @@ class _TimetableStateCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              height: 60,
-              width: 60,
+              height: 60.h,
+              width: 60.w,
               decoration: BoxDecoration(
                 color: const Color(0xFFEFF4FD),
                 borderRadius: BorderRadius.circular(18),
               ),
               child: Icon(icon, color: AppColors.primary, size: 28),
             ),
-            const SizedBox(height: 18),
-            Text(
-              title,
+            18.verticalSpace,
+            CustomText(
+              text: title,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF12284A),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF12284A),
-              ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
+            8.verticalSpace,
+            CustomText(
+              text: subtitle,
+              fontSize: AppSizes.s14,
+              // height: 1.5,
+              color: Color(0xFF61748E),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Color(0xFF61748E),
-              ),
             ),
             if (actionLabel != null && onPressed != null) ...[
-              const SizedBox(height: 18),
+              18.verticalSpace,
               FilledButton.icon(
                 onPressed: onPressed,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 18,
                     vertical: 14,
@@ -724,8 +660,8 @@ class _TimetableStateCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                icon: const Icon(Icons.add_rounded),
-                label: Text(actionLabel!),
+                icon: Icon(AppIcons.add_rounded),
+                label: CustomText(text: actionLabel!),
               ),
             ],
           ],
@@ -760,29 +696,30 @@ class _TimetableDetailCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            entry.courseTitle,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF12284A),
-            ),
+          CustomText(
+            text: entry.courseTitle,
+            fontSize: AppSizes.s16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary,
+            //  Color(0xFF12284A),
           ),
           10.verticalSpace,
           _DetailRow(icon: Icons.quiz, text: entry.courseCode),
-          _DetailRow(icon: Icons.person_outline_rounded, text: entry.teacher),
-           
           _DetailRow(
-            icon: Icons.meeting_room_outlined,
+            icon: AppIcons.person_outline_rounded,
+            text: entry.teacher,
+          ),
+          _DetailRow(
+            icon: AppIcons.meeting_room_outlined,
             text: entry.room.trim().isEmpty ? 'Room not assigned' : entry.room,
           ),
           _DetailRow(
-            icon: Icons.apartment_outlined,
+            icon: AppIcons.apartment_outlined,
             text:
                 '${entry.department} | Semester ${entry.semester} | ${entry.shift}',
           ),
           if (canManage && (onEdit != null || onDelete != null)) ...[
-            const SizedBox(height: 12),
+            12.verticalSpace,
             Row(
               children: [
                 if (onEdit != null)
@@ -797,26 +734,28 @@ class _TimetableDetailCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Edit'),
+                      icon: Icon(AppIcons.edit_outlined, size: AppSizes.s18),
+                      label: CustomText(text: AppStrings.edit),
                     ),
                   ),
-                if (onEdit != null && onDelete != null)
-                  const SizedBox(width: 10),
+                if (onEdit != null && onDelete != null) 10.horizontalSpace,
                 if (onDelete != null)
                   Expanded(
                     child: FilledButton.icon(
                       onPressed: onDelete,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFEFEF),
+                        backgroundColor: Color(0xFFFFEFEF),
                         foregroundColor: AppColors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        padding: EdgeInsets.symmetric(vertical: 13),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                      label: const Text('Delete'),
+                      icon: Icon(
+                        AppIcons.delete_outline_rounded,
+                        size: AppSizes.s18,
+                      ),
+                      label: CustomText(text: AppStrings.delete),
                     ),
                   ),
               ],
@@ -844,24 +783,30 @@ class _DetailRow extends StatelessWidget {
           Icon(icon, size: 17, color: const Color(0xFF6B7D96)),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.45,
-                color: Color(0xFF324A67),
-              ),
+            child: CustomText(
+              text: text,
+              fontSize: AppSizes.s14,
+              color: AppColors.primary,
             ),
+            // Text(
+            //   text,
+            //   style: const TextStyle(
+            //     fontSize: 14,
+            //     height: 1.45,
+            //     color: Color(0xFF324A67),
+            //   ),
+            // ),
           ),
         ],
       ),
     );
   }
 }
+
 void _showLoading() {
   Get.dialog(
     const Center(child: CircularProgressIndicator()),
-    barrierDismissible: false,
+    // barrierDismissible: false,
   );
 }
 

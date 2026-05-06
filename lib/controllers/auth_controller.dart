@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -11,6 +12,7 @@ import 'package:smart_timetable_managment/core/constants/app_strings.dart';
 import 'package:smart_timetable_managment/core/constants/app_weight.dart';
 import 'package:smart_timetable_managment/core/routes/routes_name.dart';
 import 'package:smart_timetable_managment/core/services/auth_services.dart';
+import 'package:smart_timetable_managment/core/services/notification_service.dart';
 import 'package:smart_timetable_managment/core/utils/app_snack_bar.dart';
 import 'package:smart_timetable_managment/core/utils/app_validations.dart';
 import 'package:smart_timetable_managment/core/utils/firebase_error_handler.dart';
@@ -18,6 +20,26 @@ import 'package:smart_timetable_managment/widgets/app_text.dart';
 import 'package:smart_timetable_managment/widgets/app_textfield.dart';
 
 class AuthController extends GetxController {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<void> saveToken(String userId) async {
+
+    String? token = await NotificationService.getToken();
+
+    await _firestore.collection("users").doc(userId).set({
+      "fcmToken": token
+    }, SetOptions(merge: true));
+  }
+  void listenTokenRefresh(String userId) {
+  FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+    FirebaseFirestore.instance
+        .collection("users")
+        .doc(userId)
+        .update({"fcmToken": newToken});
+  });
+}
+
+
   final authServices = AuthServices();
   FirebaseAuth auth = FirebaseAuth.instance;
 

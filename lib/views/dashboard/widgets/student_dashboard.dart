@@ -6,6 +6,7 @@ import 'package:smart_timetable_managment/controllers/carousal_controller.dart';
 import 'package:smart_timetable_managment/controllers/home_dashboard_controller.dart';
 import 'package:smart_timetable_managment/controllers/navigation_controller.dart';
 import 'package:smart_timetable_managment/core/constants/app_colors.dart';
+import 'package:smart_timetable_managment/core/constants/app_icons.dart';
 
 class StudentDashboard extends StatelessWidget {
   StudentDashboard({super.key});
@@ -59,7 +60,7 @@ class StudentDashboard extends StatelessWidget {
                       children: [
                         Expanded(
                           child: _QuickAccessCard(
-                            icon: Icons.calendar_month_rounded,
+                            icon: AppIcons.event_note,
                             iconColor: AppColors.primary,
                             bubbleColor: const Color(0xFFECEFFF),
                             title: 'Timetable',

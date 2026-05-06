@@ -72,7 +72,7 @@ class TeacherDashboard extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         CustomText(
                           text: AppStrings.upComingLecture,

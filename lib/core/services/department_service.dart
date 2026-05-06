@@ -1,105 +1,56 @@
-// import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:smart_timetable_managment/models/department_model.dart';
-
-// class DepartmentService {
-//   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-//   Future<void> addDepartment(DepartmentModel model) async {
-//     await _firestore.collection('departments').add(model.toJson());
-//   }
-
-//   Future<void> updateDepartment(String id, DepartmentModel model) async {
-//     await _firestore.collection('departments').doc(id).update(model.toJson());
-//   }
-
-//   Stream<List<DepartmentModel>> getDepartments() {
-//     return _firestore
-//         .collection('departments')
-//         .snapshots()
-//         .map(
-//           (snapshot) => snapshot.docs
-//               .map((doc) => DepartmentModel.fromJson(doc.data(), id: doc.id))
-//               .toList(),
-//         );
-//   }
-
-//   Future<void> deleteDepartment(String id) async {
-//     await _firestore.collection('departments').doc(id).delete();
-//   }
-// }
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_timetable_managment/models/department_model.dart';
 
 class DepartmentService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  DepartmentService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  // Future<void> addDepartment(DepartmentModel model) async {
-  //   await _firestore.collection('departments').add(model.toJson());
-  // }
-Future<void> addDepartment(DepartmentModel model) async {
-  final user = FirebaseAuth.instance.currentUser;
+  static const String _collectionName = 'departments';
+  final FirebaseFirestore _firestore;
 
-  final docRef = _firestore
-      .collection('admins_data')
-      .doc(user!.uid)
-      .collection('departments')
-      .doc();
+  Future<void> addDepartment(DepartmentModel model) async {
+    final docRef = _firestore.collection(_collectionName).doc();
 
-  final deptWithId = model.copyWith(id: docRef.id);
+    final deptWithId = model.copyWith(id: docRef.id);
 
-  await docRef.set(deptWithId.toJson());
-}
-  // Future<void> updateDepartment(String id, DepartmentModel model) async {
-  //   await _firestore.collection('departments').doc(id).update(model.toJson());
-  // }
+    await docRef.set(deptWithId.toJson());
+  }
+
   Future<void> updateDepartment(String id, DepartmentModel model) async {
-  final user = FirebaseAuth.instance.currentUser;
+    await _firestore.collection(_collectionName).doc(id).update(model.toJson());
+  }
 
-  await _firestore
-      .collection('admins_data')
-      .doc(user!.uid)
-      .collection('departments')
-      .doc(id)
-      .update(model.toJson());
-}
-
-  // Stream<List<DepartmentModel>> getDepartments() {
-  //   return _firestore
-  //       .collection('departments')
-  //       .snapshots()
-  //       .map(
-  //         (snapshot) => snapshot.docs
-  //             .map((doc) => DepartmentModel.fromJson(doc.data(), id: doc.id))
-  //             .toList(),
-  //       );
-  // }
   Stream<List<DepartmentModel>> getDepartments() {
-  final user = FirebaseAuth.instance.currentUser;
+    return _firestore.collection(_collectionName).snapshots().map((snapshot) {
+      final departments = snapshot.docs
+          .map(
+            (document) =>
+                DepartmentModel.fromJson(document.data(), id: document.id),
+          )
+          .toList(growable: false);
 
-  return _firestore
-      .collection('admins_data')
-      .doc(user!.uid)
-      .collection('departments')
-      .snapshots()
-      .map(
-        (snapshot) => snapshot.docs
-            .map((doc) => DepartmentModel.fromJson(doc.data(), id: doc.id))
-            .toList(),
-      );
-}
+      departments.sort((first, second) {
+        final nameComparison = first.depName.toLowerCase().compareTo(
+          second.depName.toLowerCase(),
+        );
+        if (nameComparison != 0) {
+          return nameComparison;
+        }
 
-  // Future<void> deleteDepartment(String id) async {
-  //   await _firestore.collection('departments').doc(id).delete();
-  // }
+        return first.depCode.toLowerCase().compareTo(
+          second.depCode.toLowerCase(),
+        );
+      });
+
+      return departments;
+    });
+  }
+
+  Stream<List<DepartmentModel>> getDiscoverableDepartments() {
+    return getDepartments();
+  }
+
   Future<void> deleteDepartment(String id) async {
-  final user = FirebaseAuth.instance.currentUser;
-
-  await _firestore
-      .collection('admins_data')
-      .doc(user!.uid)
-      .collection('departments')
-      .doc(id)
-      .delete();
-}
+    await _firestore.collection(_collectionName).doc(id).delete();
+  }
 }

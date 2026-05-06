@@ -6,10 +6,15 @@ import 'package:smart_timetable_managment/core/constants/app_colors.dart';
 import 'package:smart_timetable_managment/core/routes/routes.dart';
 import 'package:smart_timetable_managment/core/routes/routes_name.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:smart_timetable_managment/core/services/notification_service.dart';
 import 'firebase_options.dart';
 import 'package:flutter/services.dart';
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
+ await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+);
+await NotificationService.init();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
 statusBarColor: Colors.transparent,           // Transparent status bar
@@ -20,10 +25,6 @@ statusBarColor: Colors.transparent,           // Transparent status bar
     )
   );
   // // SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-);
-
   runApp(SmartTimeTable());
 }
 

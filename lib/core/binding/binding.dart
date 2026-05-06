@@ -17,9 +17,9 @@ class InitialBinding extends Bindings {
     Get.put(UserSessionController(), permanent: true);
     Get.put(AdminDashboardController(), permanent: true);
     Get.put(AdminAnalyticsController(), permanent: true);
+    Get.put(TimetableController(), permanent: true);
     Get.put(HomeDashboardController(), permanent: true);
     Get.put(StudentDashboardController(), permanent: true);
-    Get.put(TimetableController(), permanent: true);
-        Get.put(FeatureCarouselController(), permanent: true);
+   Get.put(FeatureCarouselController(), permanent: true);
   }
 }

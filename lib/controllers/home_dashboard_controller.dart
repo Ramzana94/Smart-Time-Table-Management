@@ -1,15 +1,46 @@
+import 'dart:async';
+
 import 'package:get/get.dart';
 import 'package:smart_timetable_managment/controllers/admin_dashboard_controller.dart';
+import 'package:smart_timetable_managment/controllers/timetable_controller.dart';
 import 'package:smart_timetable_managment/controllers/user_session_controller.dart';
 import 'package:smart_timetable_managment/models/teacher_model.dart';
 import 'package:smart_timetable_managment/models/timetable_model.dart';
 import 'package:smart_timetable_managment/models/user_profile_model.dart';
+
 
 class HomeDashboardController extends GetxController {
   final UserSessionController _userSessionController =
       Get.find<UserSessionController>();
   final AdminDashboardController _adminDashboardController =
       Get.find<AdminDashboardController>();
+  final TimetableController _timetableController =
+      Get.find<TimetableController>();
+
+  final RxList<TimetableModel> _timetableEntries = <TimetableModel>[].obs;
+  final RxBool isTimetableLoading = true.obs;
+
+  StreamSubscription<List<TimetableModel>>? _timetableSubscription;
+
+  @override
+  void onInit() {
+    super.onInit();
+    _timetableSubscription = _timetableController.getTimetable().listen(
+      (entries) {
+        _timetableEntries.assignAll(entries);
+        isTimetableLoading.value = false;
+      },
+      onError: (error) {
+        isTimetableLoading.value = false;
+      },
+    );
+  }
+
+  @override
+  void onClose() {
+    _timetableSubscription?.cancel();
+    super.onClose();
+  }
 
   UserProfileModel? get userProfile => _userSessionController.currentUser.value;
 
@@ -26,7 +57,7 @@ class HomeDashboardController extends GetxController {
         isTeacher && !_adminDashboardController.isTeachersReady.value;
 
     return _userSessionController.isLoading.value ||
-        !_adminDashboardController.isTimetableReady.value ||
+        isTimetableLoading.value ||
         isTeacherDataLoading;
   }
 
@@ -36,7 +67,7 @@ class HomeDashboardController extends GetxController {
       return null;
     }
 
-    final explicitTeacherId = _normalize(profile.teacherId);
+    final explicitTeacherId = _normalize(profile.effectiveTeacherId);
     final normalizedEmail = _normalize(profile.email);
     final normalizedName = _normalize(profile.name);
 
@@ -64,13 +95,14 @@ class HomeDashboardController extends GetxController {
     return null;
   }
 
-  bool get hasStudentScheduleContext =>
-      userProfile?.hasStudentScheduleContext ?? false;
+  List<TimetableModel> visibleTimetableEntries(List<TimetableModel> entries) {
+    // TimetableService already scopes teacher/student streams to the
+    // authenticated user, so the UI only needs sorting here.
+    return _sortByUpcoming(entries);
+  }
 
   List<TimetableModel> get homeTimetable {
-    return filterEntriesForCurrentUser(
-      _adminDashboardController.allTimetableEntries,
-    );
+    return visibleTimetableEntries(_timetableEntries);
   }
 
   List<TimetableModel> get todayLectures {
@@ -113,23 +145,7 @@ class HomeDashboardController extends GetxController {
     }
 
     if (isStudent) {
-      final profile = userProfile;
-      if (profile == null) {
-        return 'Student schedule';
-      }
-
-      final parts = <String>[];
-      if (profile.department.trim().isNotEmpty) {
-        parts.add(profile.department.trim());
-      }
-      if (profile.semester.trim().isNotEmpty) {
-        parts.add('Semester ${profile.semester.trim()}');
-      }
-      if (profile.shift.trim().isNotEmpty) {
-        parts.add(profile.shift.trim());
-      }
-
-      return parts.isEmpty ? 'Student schedule' : parts.join(' • ');
+      return 'Browse all semesters and shifts';
     }
 
     return 'Weekly timetable';
@@ -141,101 +157,22 @@ class HomeDashboardController extends GetxController {
     }
 
     if (isTeacher) {
-      final profile = userProfile;
-      final hasTeacherLink =
-          linkedTeacher != null ||
-          (profile?.teacherId.trim().isNotEmpty ?? false);
+      final hasTeacherLink = linkedTeacher != null || homeTimetable.isNotEmpty;
 
       if (!hasTeacherLink) {
-        return 'This teacher account is not linked with a teacher record yet.';
+        return 'Timetable not found. This teacher account is not linked with a teacher record yet.';
       }
 
       if (homeTimetable.isEmpty) {
-        return 'No timetable entries found for this teacher.';
+        return 'Timetable not found for this teacher.';
       }
     }
 
-    if (isStudent) {
-      if (!hasStudentScheduleContext) {
-        return 'Add department, semester, and shift in the user profile to show the student timetable.';
-      }
-
-      if (homeTimetable.isEmpty) {
-        return 'No timetable entries found for this student schedule.';
-      }
+    if (isStudent && homeTimetable.isEmpty) {
+      return 'Timetable not found for students.';
     }
 
     return null;
-  }
-
-  List<TimetableModel> filterEntriesForCurrentUser(
-    List<TimetableModel> entries,
-  ) {
-    if (isTeacher) {
-      return _sortByUpcoming(_filterTeacherEntries(entries));
-    }
-
-    if (isStudent) {
-      return _sortByUpcoming(_filterStudentEntries(entries));
-    }
-
-    return _sortByUpcoming(entries);
-  }
-
-  List<TimetableModel> _filterTeacherEntries(List<TimetableModel> entries) {
-    final profile = userProfile;
-    if (profile == null) {
-      return const <TimetableModel>[];
-    }
-
-    final teacherIds = <String>{};
-    if (profile.teacherId.trim().isNotEmpty) {
-      teacherIds.add(profile.teacherId.trim());
-    }
-
-    final teacher = linkedTeacher;
-    if (teacher != null && teacher.uid.trim().isNotEmpty) {
-      teacherIds.add(teacher.uid.trim());
-    }
-
-    if (teacherIds.isNotEmpty) {
-      return entries
-          .where((entry) => teacherIds.contains(entry.teacherId.trim()))
-          .toList();
-    }
-
-    final teacherName = _normalize(teacher?.teacherName ?? profile.name);
-    if (teacherName.isEmpty) {
-      return const <TimetableModel>[];
-    }
-
-    return entries
-        .where((entry) => _normalize(entry.teacher) == teacherName)
-        .toList();
-  }
-
-  List<TimetableModel> _filterStudentEntries(List<TimetableModel> entries) {
-    final profile = userProfile;
-    if (profile == null || !profile.hasStudentScheduleContext) {
-      return const <TimetableModel>[];
-    }
-
-    final departmentId = _normalize(profile.departmentId);
-    final departmentName = _normalize(profile.department);
-    final semester = _normalize(profile.semester);
-    final shift = _normalize(profile.shift);
-
-    return entries.where((entry) {
-      final matchesDepartment =
-          (departmentId.isNotEmpty &&
-              _normalize(entry.departmentId) == departmentId) ||
-          (departmentName.isNotEmpty &&
-              _normalize(entry.department) == departmentName);
-
-      return matchesDepartment &&
-          _normalize(entry.semester) == semester &&
-          _normalize(entry.shift) == shift;
-    }).toList();
   }
 
   List<TimetableModel> _sortByUpcoming(List<TimetableModel> items) {
