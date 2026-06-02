@@ -50,25 +50,32 @@ The Smart Timetable Management System is a Flutter and Firebase-based mobile app
   ## Screenshots
 
 ### Login Screen
-<img width="720" height="1612" alt="login" src="https://github.com/user-attachments/assets/766d1e2b-5e71-44f2-8539-1ecf8ed08060" />
+
+<img width="500" height="900" alt="login" src="https://github.com/user-attachments/assets/766d1e2b-5e71-44f2-8539-1ecf8ed08060" />
 
 ### Admin Dashboard Screen
-<img width="714" height="1599" alt="admin dashboard" src="https://github.com/user-attachments/assets/3f0c7821-83c3-495e-a564-2134be39c654" />
+
+<img width="500" height="900" alt="admin dashboard" src="https://github.com/user-attachments/assets/3f0c7821-83c3-495e-a564-2134be39c654" />
 
 ### Department Screen
-<img width="714" height="1599" alt="department" src="https://github.com/user-attachments/assets/ba943bd8-e8da-4c76-b5fe-e30da5fc9a6d" />
+
+<img width="500" height="900" alt="department" src="https://github.com/user-attachments/assets/ba943bd8-e8da-4c76-b5fe-e30da5fc9a6d" />
 
 ### Teacher Screen
-<img width="714" height="1599" alt="teacher" src="https://github.com/user-attachments/assets/3b905b8a-941d-49fc-a81c-33f0ed9b90b8" />
+
+<img width="500" height="900" alt="teacher" src="https://github.com/user-attachments/assets/3b905b8a-941d-49fc-a81c-33f0ed9b90b8" />
 
 ### Timetable View Screen
-<img width="720" height="1612" alt="timetable view" src="https://github.com/user-attachments/assets/80bc85aa-1626-4e6d-b47d-3b95328633a4" />
+
+<img width="500" height="900" alt="timetable view" src="https://github.com/user-attachments/assets/80bc85aa-1626-4e6d-b47d-3b95328633a4" />
 
 ### Timetable Creation Screen
-<img width="720" height="1612" alt="timetable creation" src="https://github.com/user-attachments/assets/1a050856-c772-4293-bd54-403ad30e25e8" />
+
+<img width="500" height="900" alt="timetable creation" src="https://github.com/user-attachments/assets/1a050856-c772-4293-bd54-403ad30e25e8" />
 
 ### Profile Screen
-<img width="720" height="1612" alt="profile" src="https://github.com/user-attachments/assets/05aaad0e-6cf2-42d3-bc76-32f71e8459c6" />
+
+<img width="500" height="900" alt="profile" src="https://github.com/user-attachments/assets/05aaad0e-6cf2-42d3-bc76-32f71e8459c6" />
 
 ## Project Objectives
 
