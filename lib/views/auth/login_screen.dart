@@ -15,6 +15,7 @@ import 'package:smart_timetable_managment/widgets/app_button.dart';
 import 'package:smart_timetable_managment/widgets/app_text.dart';
 import 'package:smart_timetable_managment/widgets/app_textfield.dart';
 
+
 class LoginScreen extends StatelessWidget {
   LoginScreen({super.key});
 
@@ -60,7 +61,8 @@ class LoginScreen extends StatelessWidget {
                     controller: authController.loginPasswordController,
                     validator: AppValidators.validatePassword,
                     borderRadius: BorderRadius.circular(10),
-                    obscureText: true,
+                    obsecureText: true,
+                    // obsecureText: authController.isPasswordVisible.value,
                     prefixIcon: Icon(AppIcons.key),
                     isVisible: authController.isPasswordVisible,
                     onToggle: authController.togglePasswordVisibility,
@@ -76,7 +78,7 @@ class LoginScreen extends StatelessWidget {
                       )
                     ),
                     onTap: () {
-                      Get.toNamed(RoutesName.forgotPasswordScreen);
+                      Get.toNamed(RoutesName.forgotPassword);
                     },
                   ),
         
@@ -135,7 +137,7 @@ class LoginScreen extends StatelessWidget {
                   Center(
                     child: InkWell(
                       onTap: () {
-                        Get.toNamed(RoutesName.registrationScreen);
+                        Get.toNamed(RoutesName.registerScreen);
                       },
                       child: RichText(
                         text: TextSpan(
@@ -151,7 +153,7 @@ class LoginScreen extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: AppSizes.s14,
                                 fontWeight: AppWeights.w400,
-                                color: AppColors.primary,
+                                color: AppColors.purple,
                               ),
                             ),
                           ],

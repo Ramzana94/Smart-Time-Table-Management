@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smart_timetable_managment/controllers/admin_dashboard_controller.dart';
+import 'package:smart_timetable_managment/core/constants/app_strings.dart';
+import 'package:smart_timetable_managment/core/utils/app_dialogbox.dart';
 import 'package:smart_timetable_managment/views/dashboard/widgets/dynamic_info_card.dart';
 
 
@@ -43,7 +45,13 @@ class DepartmentScreen extends StatelessWidget {
             description: department.description,
             classesText: '$classCount classes',
             onDelete: () {
-              controller.deleteDepartment(department.id);
+               AppDialogs.showLogoutDialog(
+                message: AppStrings.confirmDeleteDept,
+                onConfirm: () {
+                   controller.deleteDepartment(department.id);
+                },
+              );
+             
             },
             onEdit: () {
               controller.openEditDepartmentSheet(department);

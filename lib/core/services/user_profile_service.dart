@@ -17,4 +17,11 @@ class UserProfileService {
       return UserProfileModel.fromJson(data, id: doc.id);
     });
   }
+
+  Future<void> updateProfile(UserProfileModel profile) async {
+    await _firestore.collection('users').doc(profile.uid).set(
+      profile.toJson(),
+      SetOptions(merge: true),
+    );
+  }
 }

@@ -14,7 +14,6 @@ import 'package:smart_timetable_managment/views/dashboard/department/teacher_scr
 import 'package:smart_timetable_managment/widgets/app_cards.dart';
 import 'package:smart_timetable_managment/widgets/app_text.dart';
 
-
 class AdminDasboard extends StatelessWidget {
   AdminDasboard({super.key});
 
@@ -43,7 +42,7 @@ class AdminDasboard extends StatelessWidget {
                       subtitle: 'Live timetable sessions',
                       value: '${adminCtrl.totalClassCount}',
                       icon: AppIcons.event_note,
-                      height: 72,
+                      height: 72.h,
                       accentColor: const Color(0xFF0F8A83),
                     ),
                   ),
@@ -54,7 +53,7 @@ class AdminDasboard extends StatelessWidget {
                       subtitle: 'Faculty profiles available',
                       value: '${adminCtrl.totalTeacherCount}',
                       icon: AppIcons.school,
-                      height: 72,
+                      height: 72.h,
                       accentColor: const Color(0xFFCE7B1D),
                     ),
                   ),
@@ -65,7 +64,7 @@ class AdminDasboard extends StatelessWidget {
                       subtitle: 'Academic units configured',
                       value: '${adminCtrl.totalDepartmentCount}',
                       icon: AppIcons.apartment,
-                      height: 72,
+                      height: 72.h,
                       accentColor: const Color(0xFF6B5AED),
                     ),
                   ),
@@ -174,7 +173,7 @@ class AdminDasboard extends StatelessWidget {
                     ),
                   ),
                   child: const Icon(
-                    AppIcons.profile,
+                    AppIcons.person,
                     color: AppColors.white,
                     size: AppSizes.s28,
                   ),

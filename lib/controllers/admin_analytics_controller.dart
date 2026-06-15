@@ -5,7 +5,6 @@ import 'package:smart_timetable_managment/models/department_model.dart';
 import 'package:smart_timetable_managment/models/teacher_model.dart';
 import 'package:smart_timetable_managment/models/timetable_model.dart';
 
-
 class AdminAnalyticsController extends GetxController {
   static const String allDaysLabel = 'All Days';
   static const String allShiftsLabel = 'All Shifts';

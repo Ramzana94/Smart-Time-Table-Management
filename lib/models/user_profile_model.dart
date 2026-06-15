@@ -1,4 +1,3 @@
-
 import 'package:smart_timetable_managment/core/utils/class_section_identity.dart';
 
 class UserProfileModel {

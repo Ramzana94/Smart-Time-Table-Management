@@ -6,16 +6,17 @@ import 'package:smart_timetable_managment/core/constants/app_colors.dart';
 import 'package:smart_timetable_managment/core/constants/app_images.dart';
 import 'package:smart_timetable_managment/core/constants/app_sizes.dart';
 import 'package:smart_timetable_managment/core/constants/app_strings.dart';
+import 'package:smart_timetable_managment/core/constants/app_weight.dart';
 import 'package:smart_timetable_managment/core/routes/routes_name.dart';
 import 'package:smart_timetable_managment/views/onboarding/onboarding_dot_navigation.dart';
 import 'package:smart_timetable_managment/widgets/app_button.dart';
 
-class OnbroadingScreen extends StatelessWidget {
-  const OnbroadingScreen({super.key});
 
+class OnbroadingScreen extends StatelessWidget {
+OnbroadingScreen({super.key});
+ final controller = Get.put(OnboardingController());
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(OnboardingController());
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -49,7 +50,6 @@ class OnbroadingScreen extends StatelessWidget {
                 } else {
                   return Positioned(
                     bottom: 50,
-
                     child: TextButton(
                       onPressed: () => OnboardingController.instance.skipPage(),
                       child: Text(AppStrings.skip),
@@ -75,10 +75,9 @@ class OnbroadingScreen extends StatelessWidget {
                       },
                       text: AppStrings.next,
                       color: AppColors.primary,
-                      borderRadius: AppSizes.r10,
+                      borderRadius: 10.r,
                       height: 56.h,
-                    //  width: 158.w,.
-                    minWidth: 158.w,
+                      minWidth: 158.w,
                       textColor: AppColors.white,
                     ),
                   );
@@ -107,12 +106,11 @@ class OnBoardingPage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Image(height: 284.h, width: 284.w, image: AssetImage(image)),
-        // 5.verticalSpace,
         Center(
           child: Text(
             title,
             style: TextStyle(
-              fontWeight: FontWeight.w600,
+              fontWeight: AppWeights.w600,
               fontSize: AppSizes.s28,
             ),
             textAlign: TextAlign.center,
@@ -120,10 +118,18 @@ class OnBoardingPage extends StatelessWidget {
         ),
         10.verticalSpace,
         Center(
-          child: Text(
-            description,
-            style: TextStyle(fontWeight: FontWeight.w400, fontSize: AppSizes.s15),
-            textAlign: TextAlign.center,
+          child: Container(
+            height: 46.h,
+            width: 311.w,
+            color: AppColors.transparent,
+            child: Text(
+              description,
+              style: TextStyle(
+                fontWeight: AppWeights.w400,
+                fontSize: AppSizes.s15,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       ],

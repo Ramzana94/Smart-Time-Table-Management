@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:smart_timetable_managment/controllers/home_dashboard_controller.dart';
 import 'package:smart_timetable_managment/controllers/navigation_controller.dart';
 import 'package:smart_timetable_managment/controllers/timetable_controller.dart';
 import 'package:smart_timetable_managment/core/constants/app_colors.dart';
@@ -11,17 +12,18 @@ import 'package:smart_timetable_managment/core/constants/app_weight.dart';
 import 'package:smart_timetable_managment/models/timetable_model.dart';
 import 'package:smart_timetable_managment/views/dashboard/dashboard_screen.dart';
 import 'package:smart_timetable_managment/views/dashboard/timetable/timetable_screen.dart';
-import 'package:smart_timetable_managment/views/notification_screen.dart';
 import 'package:smart_timetable_managment/views/profile_screen.dart';
 import 'package:smart_timetable_managment/widgets/app_button.dart';
 import 'package:smart_timetable_managment/widgets/app_dropdown.dart';
+import 'package:smart_timetable_managment/widgets/app_text.dart';
+
 
 class NavigationScreen extends StatelessWidget {
   NavigationScreen({super.key});
 
-  final NavigationController navigationController = Get.put(
-    NavigationController(),
-  );
+  final NavigationController navigationController =
+      Get.find<NavigationController>();
+  final HomeDashboardController homeCtrl = Get.find<HomeDashboardController>();
   final TimetableController timetableCtrl = Get.find<TimetableController>();
 
   //  AppBar title
@@ -34,9 +36,6 @@ class NavigationScreen extends StatelessWidget {
         return AppStrings.timetable;
 
       case 2:
-        return AppStrings.notifications;
-
-      case 3:
         return AppStrings.profile;
 
       default:
@@ -49,28 +48,29 @@ class NavigationScreen extends StatelessWidget {
     final List<Widget> screens = [
       DashboardScreen(),
       TimeTableScreen(),
-      NotificationScreen(),
       ProfileScreen(),
     ];
     return Obx(() {
-      if (navigationController.isLoadingRole.value) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      }
+      final isLoadingRole = navigationController.isLoadingRole.value;
       final role = navigationController.userRole.value.trim();
-      final isAdmin = role == 'Admin';
+      final effectiveRole = role.isEmpty ? 'Student' : role;
+      final isAdmin = effectiveRole == 'Admin';
 
       return Scaffold(
         appBar: AppBar(
           title: Text(
-            _getAppBarTitle(role, navigationController.currentIndex.value),
+            _getAppBarTitle(
+              effectiveRole,
+              navigationController.currentIndex.value,
+            ),
           ),
           centerTitle: true,
           backgroundColor: AppColors.primary,
           foregroundColor: AppColors.white,
           actions: [
-            if (navigationController.currentIndex.value == 1)
+            if (!isLoadingRole && navigationController.currentIndex.value == 1)
               IconButton(
-                icon: const Icon(Icons.tune_outlined),
+                icon: const Icon(AppIcons.tune_outlined),
                 onPressed: () => _showFilterBottomSheet(context),
               ),
           ],
@@ -88,16 +88,18 @@ class NavigationScreen extends StatelessWidget {
           backgroundColor: AppColors.white,
           type: BottomNavigationBarType.fixed,
 
-          onTap: (index) {
-            navigationController.changeIndex(index);
-          },
+          onTap: isLoadingRole
+              ? null
+              : (index) {
+                  navigationController.changeIndex(index);
+                },
 
           items: [
             BottomNavigationBarItem(
               icon: Icon(
                 isAdmin
                     ? AppIcons
-                          .apartment // Admin icon
+                          .dashboard // Admin icon
                     : AppIcons.home, // Teacher/Student icon
               ),
               label: isAdmin ? AppStrings.dashboard : AppStrings.home,
@@ -106,11 +108,6 @@ class NavigationScreen extends StatelessWidget {
             BottomNavigationBarItem(
               icon: Icon(AppIcons.timetable),
               label: AppStrings.timetable,
-            ),
-
-            BottomNavigationBarItem(
-              icon: Icon(AppIcons.notificationsActive),
-              label: AppStrings.notifications,
             ),
 
             BottomNavigationBarItem(
@@ -153,11 +150,16 @@ class NavigationScreen extends StatelessWidget {
           stream: timetableCtrl.getTimetable(),
           builder: (context, snapshot) {
             final allEntries = snapshot.data ?? const <TimetableModel>[];
+            final role = navigationController.userRole.value.trim();
+            final isAdmin = role == 'Admin';
+            final baseEntries = isAdmin
+                ? allEntries
+                : homeCtrl.visibleTimetableEntries(allEntries);
 
             return Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               decoration: const BoxDecoration(
-                color: Colors.white,
+                color: AppColors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: SingleChildScrollView(
@@ -167,42 +169,68 @@ class NavigationScreen extends StatelessWidget {
                   children: [
                     Center(
                       child: Container(
-                        width: 52,
-                        height: 4,
+                        width: 52.w,
+                        height: 4.h,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFD6DEEC),
+                          color: AppColors.grey,
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
-                      'Filter Timetable',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF12284A),
-                      ),
+                    CustomText(
+                      text: AppStrings.filterTimeTable,
+                      fontSize: AppSizes.s20,
+                      fontWeight: AppWeights.w700,
                     ),
-                    const SizedBox(height: 20),
+                    20.verticalSpace,
                     Obx(() {
                       final departmentOptions = timetableCtrl.departmentOptions(
-                        allEntries,
+                        baseEntries,
                       );
-                      var semesterOptions = timetableCtrl.semesterOptions(
-                        allEntries,
-                        department: timetableCtrl.selectedDepartment.value,
+                      final activeDepartment = timetableCtrl
+                          .validSelectionOrNull(
+                            timetableCtrl.selectedDepartment.value,
+                            departmentOptions,
+                          );
+                      if (deptNotifier.value != activeDepartment) {
+                        deptNotifier.value = activeDepartment;
+                      }
+
+                      final semesterOptions = timetableCtrl.semesterOptions(
+                        baseEntries,
+                        department: activeDepartment,
                       );
-    
+                      final activeSemester = timetableCtrl.validSelectionOrNull(
+                        timetableCtrl.selectedSemester.value,
+                        semesterOptions,
+                      );
+                      if (semesterNotifier.value != activeSemester) {
+                        semesterNotifier.value = activeSemester;
+                      }
 
                       final shiftOptions = timetableCtrl.shiftOptions(
-                        allEntries,
-                        department: timetableCtrl.selectedDepartment.value,
-                        semester: timetableCtrl.selectedSemester.value,
+                        baseEntries,
+                        department: activeDepartment,
+                        semester: activeSemester,
                       );
+                      final activeShift = timetableCtrl.validSelectionOrNull(
+                        timetableCtrl.selectedShift.value,
+                        shiftOptions,
+                      );
+                      if (shiftNotifier.value != activeShift) {
+                        shiftNotifier.value = activeShift;
+                      }
+
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          CustomText(
+                            text: AppStrings.departments,
+                            fontSize: AppSizes.s14,
+                            fontWeight: AppWeights.bold,
+                          ),
+                          5.verticalSpace,
                           CustomDropdown<String>(
                             items: departmentOptions,
                             itemLabel: (e) => e,
@@ -212,7 +240,13 @@ class NavigationScreen extends StatelessWidget {
                               timetableCtrl.updateDepartment(value);
                             },
                           ),
-                          const SizedBox(height: 16),
+                          16.verticalSpace,
+                          CustomText(
+                            text: AppStrings.semester,
+                            fontSize: AppSizes.s14,
+                            fontWeight: AppWeights.bold,
+                          ),
+                          5.verticalSpace,
                           CustomDropdown<String>(
                             items: semesterOptions,
                             itemLabel: (e) => e,
@@ -222,7 +256,13 @@ class NavigationScreen extends StatelessWidget {
                               timetableCtrl.updateSemester(value);
                             },
                           ),
-                          const SizedBox(height: 16),
+                          16.verticalSpace,
+                          CustomText(
+                            text: AppStrings.shift,
+                            fontSize: AppSizes.s14,
+                            fontWeight: AppWeights.bold,
+                          ),
+                          5.verticalSpace,
                           CustomDropdown<String>(
                             items: shiftOptions,
                             itemLabel: (e) => e,
@@ -232,11 +272,12 @@ class NavigationScreen extends StatelessWidget {
                               timetableCtrl.updateShift(value);
                             },
                           ),
-                          const SizedBox(height: 24),
+                          24.verticalSpace,
                           Row(
                             children: [
                               Expanded(
                                 child: CustomButton(
+                                  borderColor: AppColors.primary,
                                   onPressed: () {
                                     timetableCtrl.selectedDepartment.value =
                                         null;
@@ -244,25 +285,24 @@ class NavigationScreen extends StatelessWidget {
                                     timetableCtrl.selectedShift.value = null;
                                     Get.back();
                                   },
-                                  text: 'Reset',
+                                  text: AppStrings.reset,
                                   color: AppColors.white,
                                   borderRadius: 10.r,
-                                  height: 56.h,
+                                  height: 57.h,
                                   textColor: AppColors.primary,
-                                  borderColor: AppColors.primary,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              12.horizontalSpace,
                               Expanded(
                                 child: CustomButton(
                                   onPressed: () {
                                     timetableCtrl.update();
                                     Get.back();
                                   },
-                                  text: 'Apply Filter',
+                                  text: AppStrings.applyFilter,
                                   color: AppColors.primary,
                                   borderRadius: 10.r,
-                                  height: 56,
+                                  height: 57.h,
                                   textColor: AppColors.white,
                                 ),
                               ),
@@ -281,5 +321,4 @@ class NavigationScreen extends StatelessWidget {
       isScrollControlled: true,
     );
   }
-
 }

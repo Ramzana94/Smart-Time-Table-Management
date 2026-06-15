@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_timetable_managment/models/department_model.dart';
 
 class DepartmentService {
@@ -20,32 +21,66 @@ class DepartmentService {
     await _firestore.collection(_collectionName).doc(id).update(model.toJson());
   }
 
-  Stream<List<DepartmentModel>> getDepartments() {
-    return _firestore.collection(_collectionName).snapshots().map((snapshot) {
-      final departments = snapshot.docs
-          .map(
-            (document) =>
-                DepartmentModel.fromJson(document.data(), id: document.id),
-          )
-          .toList(growable: false);
+  // Stream<List<DepartmentModel>> getDepartments() {
+  //   return _firestore.collection(_collectionName).snapshots().map((snapshot) {
+  //     final departments = snapshot.docs
+  //         .map(
+  //           (document) =>
+  //               DepartmentModel.fromJson(document.data(), id: document.id),
+  //         )
+  //         .toList(growable: false);
 
-      departments.sort((first, second) {
-        final nameComparison = first.depName.toLowerCase().compareTo(
-          second.depName.toLowerCase(),
-        );
-        if (nameComparison != 0) {
-          return nameComparison;
-        }
+  //     departments.sort((first, second) {
+  //       final nameComparison = first.depName.toLowerCase().compareTo(
+  //         second.depName.toLowerCase(),
+  //       );
+  //       if (nameComparison != 0) {
+  //         return nameComparison;
+  //       }
 
-        return first.depCode.toLowerCase().compareTo(
-          second.depCode.toLowerCase(),
-        );
+  //       return first.depCode.toLowerCase().compareTo(
+  //         second.depCode.toLowerCase(),
+  //       );
+  //     });
+
+  //     return departments;
+  //   });
+  // }
+
+Stream<List<DepartmentModel>> getDepartments() {
+  final currentAdminId = FirebaseAuth.instance.currentUser!.uid;
+
+  return _firestore
+      .collection(_collectionName)
+      .where('adminId', isEqualTo: currentAdminId)
+      .snapshots()
+      .map((snapshot) {
+        final departments = snapshot.docs
+            .map(
+              (document) => DepartmentModel.fromJson(
+                document.data(),
+                id: document.id,
+              ),
+            )
+            .toList(growable: false);
+
+        departments.sort((first, second) {
+          final nameComparison = first.depName.toLowerCase().compareTo(
+            second.depName.toLowerCase(),
+          );
+
+          if (nameComparison != 0) {
+            return nameComparison;
+          }
+
+          return first.depCode.toLowerCase().compareTo(
+            second.depCode.toLowerCase(),
+          );
+        });
+
+        return departments;
       });
-
-      return departments;
-    });
-  }
-
+}
   Stream<List<DepartmentModel>> getDiscoverableDepartments() {
     return getDepartments();
   }

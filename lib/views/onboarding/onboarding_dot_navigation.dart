@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:smart_timetable_managment/controllers/onboarding_controller.dart';
 import 'package:smart_timetable_managment/core/constants/app_colors.dart';
+
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 class OnBoardingDotNavigation extends StatelessWidget {
@@ -17,7 +17,7 @@ class OnBoardingDotNavigation extends StatelessWidget {
       child: SmoothPageIndicator(
         effect: ExpandingDotsEffect(
           activeDotColor: dark?AppColors.primary:AppColors.light,
-          dotHeight: 5.h
+          dotHeight: 5
         ),
         controller: controller.pageController,
         onDotClicked: controller.dotNavigationClick,

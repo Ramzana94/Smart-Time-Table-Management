@@ -5,7 +5,6 @@ import 'package:smart_timetable_managment/core/constants/app_colors.dart';
 import 'package:smart_timetable_managment/models/admin_analytics_model.dart';
 import 'package:smart_timetable_managment/widgets/app_text.dart';
 
-
 class AdminAnalyticsScreen extends StatelessWidget {
   const AdminAnalyticsScreen({super.key});
 

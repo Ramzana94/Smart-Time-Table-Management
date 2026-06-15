@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smart_timetable_managment/controllers/admin_dashboard_controller.dart';
+import 'package:smart_timetable_managment/core/constants/app_strings.dart';
+import 'package:smart_timetable_managment/core/utils/app_dialogbox.dart';
 import 'package:smart_timetable_managment/views/dashboard/widgets/dynamic_info_card.dart';
+
 
 class TeacherScreen extends StatelessWidget {
   const TeacherScreen({super.key});
@@ -44,7 +47,12 @@ class TeacherScreen extends StatelessWidget {
             extraInfo: teacher.teacherSpecialization,
             classesText: '$classCount classes',
             onDelete: () {
-              controller.deleteTeacher(teacher.uid);
+              AppDialogs.showLogoutDialog(
+                message: AppStrings.confirmDeleteTeacher,
+                onConfirm: () {
+                  controller.deleteTeacher(teacher.uid);
+                },
+              );
             },
             onEdit: () {
               controller.openEditTeacherSheet(teacher);

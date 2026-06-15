@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:smart_timetable_managment/core/constants/app_colors.dart';
+import 'package:smart_timetable_managment/core/constants/app_sizes.dart';
+import 'package:smart_timetable_managment/core/constants/app_weight.dart';
 import 'package:smart_timetable_managment/models/timetable_grid_model.dart';
 import 'package:smart_timetable_managment/models/timetable_model.dart';
+import 'package:smart_timetable_managment/widgets/app_text.dart';
 import 'package:smart_timetable_managment/widgets/timetable_session_card.dart';
 
 
@@ -18,7 +22,7 @@ class TimetableScheduleBoard extends StatelessWidget {
 
   static const double _timeColumnWidth = 165;
   static const double _dayColumnWidth = 215;
-  static const double _rowMinHeight = 165;
+  static const double _rowMinHeight = 132;
   static const double _boardBorderWidth = 1;
 
   @override
@@ -33,7 +37,7 @@ class TimetableScheduleBoard extends StatelessWidget {
       child: Container(
         width: totalWidth,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(color: const Color(0xFFD9E3F1)),
           boxShadow: const [
@@ -81,7 +85,7 @@ class _BoardHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF295FE7),
+        color: AppColors.primary,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(10),
           topRight: Radius.circular(10),
@@ -182,13 +186,11 @@ class _DaySlotCell extends StatelessWidget {
   Widget build(BuildContext context) {
     if (entries.isEmpty) {
       return const Center(
-        child: Text(
-          '-',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFFA3B4CC),
-          ),
+        child: CustomText(
+          text: '-',
+          fontSize: AppSizes.s20,
+          fontWeight: AppWeights.w500,
+          color: AppColors.primary,
         ),
       );
     }
@@ -221,16 +223,13 @@ class _HeaderCell extends StatelessWidget {
       padding: EdgeInsets.symmetric(
         horizontal: alignStart ? 24 : 16,
         vertical: 22,
-        
       ),
       alignment: alignStart ? Alignment.centerLeft : Alignment.center,
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
-        ),
+      child: CustomText(
+        text: label,
+        fontSize: AppSizes.s16,
+        fontWeight: AppWeights.w600,
+        color: AppColors.white,
       ),
     );
   }

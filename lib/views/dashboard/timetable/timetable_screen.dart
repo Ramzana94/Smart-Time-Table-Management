@@ -14,8 +14,9 @@ import 'package:smart_timetable_managment/core/services/pdf_service.dart';
 import 'package:smart_timetable_managment/core/utils/app_snack_bar.dart';
 import 'package:smart_timetable_managment/models/timetable_model.dart';
 import 'package:smart_timetable_managment/views/dashboard/timetable/components/summary_chip.dart';
+import 'package:smart_timetable_managment/views/dashboard/timetable/components/timetable_schedule_board.dart';
 import 'package:smart_timetable_managment/widgets/app_text.dart';
-import 'package:smart_timetable_managment/widgets/timetable_schedule_board.dart';
+
 class TimeTableScreen extends StatelessWidget {
   TimeTableScreen({super.key});
 
@@ -352,7 +353,7 @@ class TimeTableScreen extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: AppColors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: SingleChildScrollView(

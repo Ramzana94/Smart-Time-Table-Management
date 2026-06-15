@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:smart_timetable_managment/core/constants/app_colors.dart';
+import 'package:smart_timetable_managment/core/constants/app_icons.dart';
+import 'package:smart_timetable_managment/core/constants/app_weight.dart';
 import 'package:smart_timetable_managment/widgets/app_text.dart';
+
 
 class CustomDropdown<T> extends StatelessWidget {
   final List<T> items;
@@ -40,11 +44,13 @@ class CustomDropdown<T> extends StatelessWidget {
           child: DropdownButton2<T>(
             isExpanded: true,
 
-            valueListenable: valueListenable, 
+            valueListenable: valueListenable, //  THIS is your API
 
             hint: Row(
               children: [
-                Expanded(child: CustomText(text: hintText, fontSize: 12,)),
+                Expanded(
+                  child: CustomText(text: hintText, fontSize: 12.sp),
+                ),
               ],
             ),
 
@@ -53,7 +59,13 @@ class CustomDropdown<T> extends StatelessWidget {
                   (item) => DropdownItem<T>(
                     value: item,
                     height: 40.h,
-                    child: Text(itemLabel(item)),
+                    child: CustomText(
+                      text: itemLabel(item),
+                      fontSize: 13.sp,
+                      fontWeight: AppWeights.bold,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 )
                 .toList(),
@@ -66,21 +78,19 @@ class CustomDropdown<T> extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey),
+                border: Border.all(color: borderColor),
               ),
             ),
 
             iconStyleData: const IconStyleData(
-              icon: Icon(Icons.keyboard_arrow_down_outlined),
-              // iconSize: 22,
-              // iconEnabledColor: Colors.black,
+              icon: Icon(AppIcons.keyboard_arrow_down_outlined),
             ),
 
             dropdownStyleData: DropdownStyleData(
               maxHeight: maxDropDownHeight.h,
               decoration: BoxDecoration(
-                // borderRadius: BorderRadius.circular(10),
-                // color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                color: AppColors.white,
               ),
             ),
           ),

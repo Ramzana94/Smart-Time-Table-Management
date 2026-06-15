@@ -18,7 +18,7 @@ class SplashController extends GetxController {
 
     // 🔴 USER NOT LOGGED IN
     if (user == null) {
-      Get.offAllNamed(RoutesName.onboardingScreen);
+      Get.offAllNamed(RoutesName.onBoardingScreen);
       return;
     }
 
@@ -31,7 +31,7 @@ class SplashController extends GetxController {
     // If the account was deleted from the database but the auth token is still active, sign them out.
     if (!doc.exists) {
       await FirebaseAuth.instance.signOut();
-      Get.offAllNamed(RoutesName.onboardingScreen);
+      Get.offAllNamed(RoutesName.onBoardingScreen);
       return;
     }
 

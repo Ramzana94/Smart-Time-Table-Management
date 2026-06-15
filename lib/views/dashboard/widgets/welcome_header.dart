@@ -28,17 +28,18 @@ class WelcomeHeader extends StatelessWidget {
 
     return Obx(() {
       final profile = userSessionController.currentUser.value;
-      final name = profile?.name.trim().isNotEmpty == true
+      final rawName = profile?.name.trim().isNotEmpty == true
           ? profile!.name.trim()
           : 'User';
-      final role = profile?.role.trim().isNotEmpty == true
-          ? profile!.role.trim()
-          : 'Student';
-      final firstLetter = name[0].toUpperCase();
+
+      final roleLower = profile?.role.trim().toLowerCase() ?? 'student';
+
+      final displayName = roleLower == 'teacher' ? 'Prof! $rawName' : rawName;
+      final firstLetter = displayName[0].toUpperCase();
 
       return Container(
         width: double.infinity,
-        height: 100.h,
+        height: 110.h,
         padding: const EdgeInsets.all(16),
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
@@ -57,23 +58,31 @@ class WelcomeHeader extends StatelessWidget {
                 color: AppColors.primary,
               ),
             ),
+
             18.horizontalSpace,
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CustomText(
-                  text: 'Welcome $name',
-                  fontSize: AppSizes.s18,
-                  fontWeight: AppWeights.bold,
-                  color: AppColors.white,
-                ),
-                8.verticalSpace,
-                CustomText(
-                  text: _getRoleText(role),
-                  color: AppColors.white,
-                  fontSize: AppSizes.s14,
-                ),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CustomText(
+                    text: 'Welcome $displayName',
+                    fontSize: AppSizes.s18,
+                    fontWeight: AppWeights.bold,
+                    color: AppColors.white,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  8.verticalSpace,
+                  CustomText(
+                    text: _getRoleText(roleLower),
+                    color: AppColors.white,
+                    fontSize: AppSizes.s14,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ],
         ),

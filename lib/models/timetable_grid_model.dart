@@ -1,4 +1,3 @@
-
 import 'package:smart_timetable_managment/models/timetable_model.dart';
 
 class TimetableGridData {

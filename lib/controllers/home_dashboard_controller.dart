@@ -8,7 +8,6 @@ import 'package:smart_timetable_managment/models/teacher_model.dart';
 import 'package:smart_timetable_managment/models/timetable_model.dart';
 import 'package:smart_timetable_managment/models/user_profile_model.dart';
 
-
 class HomeDashboardController extends GetxController {
   final UserSessionController _userSessionController =
       Get.find<UserSessionController>();

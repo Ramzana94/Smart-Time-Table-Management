@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:smart_timetable_managment/core/constants/app_colors.dart';
 import 'package:smart_timetable_managment/core/constants/app_sizes.dart';
+import 'package:smart_timetable_managment/core/constants/app_weight.dart';
+
+
 class CustomButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String text;
@@ -22,9 +25,9 @@ final Color? loaderColor;
     required this.onPressed,
     required this.text,
     required this.color,
-   required this.borderRadius,
+    required this.borderRadius,
     this.minWidth,
-  required this.height,
+    required this.height,
     required this.textColor,
     this.imagePath,
     this.borderColor,
@@ -68,19 +71,21 @@ final Color? loaderColor;
                       if (imagePath != null)
                         Image.asset(imagePath!, height: 20.h, width: 20.w),
                       if (imagePath != null) const SizedBox(width: 10),
-                      Text(
-                        text,
-                        style: TextStyle(
-                          fontSize: AppSizes.s16,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
+                      Center(
+                        child: Text(
+                          text,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: AppSizes.s16,
+                            fontWeight: AppWeights.w600,
+                            color: textColor,
+                          ),
                         ),
                       ),
-                      if(icon !=null)
+                      if(icon!=null)
                       SizedBox(width: 10,),
                        if(icon!=null)...[
                         icon!,
-                        // const SizedBox(width: 10,)
                       ],
                     ],
                   )),

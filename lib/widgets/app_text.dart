@@ -8,11 +8,8 @@ class CustomText extends StatelessWidget {
   final TextAlign? textAlign;
   final String? fontFamily;
   final int? maxLines;
-  final TextOverflow? overflow;
-
-  /// 🔥 NEW
   final bool isRequired;
-
+  final TextOverflow? overflow;
   const CustomText({
     super.key,
     required this.text,
@@ -22,8 +19,9 @@ class CustomText extends StatelessWidget {
     this.textAlign,
     this.fontFamily,
     this.maxLines,
-    this.overflow,
-    this.isRequired = false, // default
+    this.overflow, 
+    this.isRequired=false,
+     
   });
 
   @override
@@ -49,6 +47,6 @@ class CustomText extends StatelessWidget {
         ],
       ),
     );
- 
+    
   }
 }

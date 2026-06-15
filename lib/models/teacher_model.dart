@@ -1,5 +1,6 @@
 class TeacherModel {
   final String uid;
+  final String adminId; 
   final String teacherName;
   final String teacherEmail;
   final String teacherPhoneNo;
@@ -9,6 +10,7 @@ class TeacherModel {
 
   const TeacherModel({
     this.uid = '',
+    required this.adminId,
     required this.teacherName,
     required this.teacherEmail,
     required this.teacherPhoneNo,
@@ -20,6 +22,7 @@ class TeacherModel {
   factory TeacherModel.fromJson(Map<String, dynamic> json, {String id = ''}) {
     return TeacherModel(
       uid: id,
+      adminId: json['adminId'] ?? '',
       teacherName: json['teacherName'] ?? '',
       teacherEmail: json['teacherEmail'] ?? '',
       teacherPhoneNo: json['teacherPhoneNo'] ?? '',
@@ -31,6 +34,7 @@ class TeacherModel {
 
   TeacherModel copyWith({
     String? id,
+    String? adminId,
     String? teacherName,
     String? teacherEmail,
     String? teacherPhoneNo,
@@ -40,6 +44,7 @@ class TeacherModel {
   }) {
     return TeacherModel(
       uid: id ?? this.uid,
+      adminId: adminId ?? this.adminId,
       teacherName: teacherName ?? this.teacherName,
       teacherEmail: teacherEmail ?? this.teacherEmail,
       teacherPhoneNo: teacherPhoneNo ?? this.teacherPhoneNo,
@@ -52,7 +57,7 @@ class TeacherModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': uid,
+      'adminId': adminId,
       'teacherName': teacherName,
       'teacherEmail': teacherEmail,
       'teacherPhoneNo': teacherPhoneNo,
@@ -66,10 +71,13 @@ class TeacherModel {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! TeacherModel) return false;
+
     if (uid.isNotEmpty && other.uid.isNotEmpty) {
       return other.uid == uid;
     }
-    return other.teacherName == teacherName &&
+
+    return other.adminId == adminId &&
+        other.teacherName == teacherName &&
         other.teacherEmail == teacherEmail &&
         other.teacherPhoneNo == teacherPhoneNo &&
         other.teacherDept == teacherDept &&
@@ -79,10 +87,10 @@ class TeacherModel {
 
   @override
   int get hashCode {
-    if (uid.isNotEmpty) {
-      return uid.hashCode;
-    }
+    if (uid.isNotEmpty) return uid.hashCode;
+
     return Object.hash(
+      adminId,
       teacherName,
       teacherEmail,
       teacherPhoneNo,

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:smart_timetable_managment/core/constants/app_colors.dart';
 
-
 class AppSnackbar {
   AppSnackbar._();
 

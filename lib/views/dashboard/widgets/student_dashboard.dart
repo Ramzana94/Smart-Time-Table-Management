@@ -5,211 +5,254 @@ import 'package:get/get.dart';
 import 'package:smart_timetable_managment/controllers/carousal_controller.dart';
 import 'package:smart_timetable_managment/controllers/home_dashboard_controller.dart';
 import 'package:smart_timetable_managment/controllers/navigation_controller.dart';
+import 'package:smart_timetable_managment/controllers/user_session_controller.dart';
 import 'package:smart_timetable_managment/core/constants/app_colors.dart';
 import 'package:smart_timetable_managment/core/constants/app_icons.dart';
+import 'package:smart_timetable_managment/core/constants/app_strings.dart';
+import 'package:smart_timetable_managment/core/constants/app_weight.dart';
+import 'package:smart_timetable_managment/widgets/app_text.dart';
 
 class StudentDashboard extends StatelessWidget {
   StudentDashboard({super.key});
 
   final HomeDashboardController homeCtrl = Get.find<HomeDashboardController>();
-  final NavigationController navCtrl = Get.find<NavigationController>();
-  final FeatureCarouselController carouselController = Get.find<FeatureCarouselController>();
+  final UserSessionController userSessionCtrl =
+      Get.find<UserSessionController>();
+  final FeatureCarouselController carouselCtrl =
+      Get.find<FeatureCarouselController>();
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: const Color(0xFFF8F9FF),
-      child: SafeArea(
-        bottom: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isCompact = constraints.maxWidth < 380;
-            final horizontalPadding = isCompact ? 20.0 : 24.0;
+    return SafeArea(
+      child: Obx(() {
+        if (homeCtrl.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                28,
-                horizontalPadding,
-                24,
-              ),
-              child: Obx(() {
-                final profileImageUrl = homeCtrl.userProfile?.image.trim();
+        final userProfile = userSessionCtrl.currentUser.value;
+        final userName = userProfile?.name ?? 'Student';
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _GreetingHeader(profileImageUrl: profileImageUrl),
-                    const SizedBox(height: 30),
+        return SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                20.verticalSpace,
+                // Greeting Section
+                _GreetingSection(userName: userName),
+                20.verticalSpace,
 
-                    const _SmartTimetableBanner(),
-                    const SizedBox(height: 30),
+                // Smart Timetable Banner
+                _SmartTimetableBanner(),
+                15.verticalSpace,
 
-                    const Text(
-                      'Quick Access',
-                      style: TextStyle(
-                        color: Color(0xFF1C1C27),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                // Timetable Summary Cards
+                // Row(
+                //   children: [
+                //     Expanded(
+                //       child: CustomCard(
+                //         title: AppStrings.totalClasses,
+                //         value: '${homeCtrl.totalClasses}',
+                //         icon: AppIcons.event_note,
+                //         height: 60,
+                //         accentColor: AppColors.primary,
+                //       ),
+                //     ),
+                //     10.horizontalSpace,
+                //     Expanded(
+                //       child: CustomCard(
+                //         title: "Today's Lectures",
+                //         value: '${homeCtrl.todayLectures.length}',
+                //         icon: AppIcons.timer,
+                //         height: 72,
+                //         accentColor: AppColors.primary,
+                //       ),
+                //     ),
+                //   ],
+                // ),
+                // if (homeCtrl.homeNotice != null) ...[
+                //   18.verticalSpace,
+                //   DashboardMessageCard(message: homeCtrl.homeNotice!),
+                // ],
+                // 20.verticalSpace,
+                // Card(
+                //   elevation: 8,
+                //   child: Padding(
+                //     padding: const EdgeInsets.all(12),
+                //     child: Column(
+                //       crossAxisAlignment: CrossAxisAlignment.stretch,
+                //       children: [
+                //         CustomText(
+                //           text: AppStrings.upComingLecture,
+                //           fontSize: AppSizes.s18,
+                //           fontWeight: AppWeights.bold,
+                //         ),
+                //         12.verticalSpace,
+                //         if (homeCtrl.upcomingLectures.take(5).isEmpty)
+                //           const Padding(
+                //             padding: EdgeInsets.all(12),
+                //             child: Text('No upcoming lectures found'),
+                //           )
+                //         else
+                //           Column(
+                //             children: homeCtrl.upcomingLectures.take(5).map((
+                //               lecture,
+                //             ) {
+                //               return LectureCard(
+                //                 title: lecture.courseTitle,
+                //                 dayTime: '${lecture.day} • ${lecture.time}',
+                //                 room: 'Room ${lecture.room}',
+                //                 department:
+                //                     '${lecture.department} • Semester ${lecture.semester}',
+                //               );
+                //             }).toList(),
+                //           ),
+                //       ],
+                //     ),
+                //   ),
+                // ),
+                // 15.verticalSpace,
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _QuickAccessCard(
-                            icon: AppIcons.event_note,
-                            iconColor: AppColors.primary,
-                            bubbleColor: const Color(0xFFECEFFF),
-                            title: 'Timetable',
-                            subtitle: 'View your timetable',
-                            onTap: () => navCtrl.changeIndex(1),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: _QuickAccessCard(
-                            icon: Icons.person_outline_rounded,
-                            iconColor: const Color(0xFF27C49A),
-                            bubbleColor: const Color(0xFFE0F9EF),
-                            title: 'Profile',
-                            subtitle: 'Manage your account',
-                            onTap: () => navCtrl.changeIndex(3),
-                          ),
-                        ),
-                      ],
-                    ),
+                // Quick Access Section
+                _QuickAccessSection(),
+                15.verticalSpace,
 
-                    const SizedBox(height: 24),
-
-                    const _FeatureCarouselSlider(),
-                  ],
-                );
-              }),
-            );
-          },
-        ),
-      ),
+                _FeatureCarouselSlider(),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 }
 
-/* ---------------- HEADER ---------------- */
+// Greeting Section with Avatar
+class _GreetingSection extends StatelessWidget {
+  final String userName;
 
-class _GreetingHeader extends StatelessWidget {
-  const _GreetingHeader({required this.profileImageUrl});
-  final String? profileImageUrl;
+  const _GreetingSection({required this.userName});
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Good Morning!',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF171724),
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Welcome back, Student',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFF737381),
-                ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CustomText(
+              text: AppStrings.goodMorning,
+              fontSize: 26.sp,
+              fontWeight: AppWeights.bold,
+              color: AppColors.black,
+            ),
+            5.verticalSpace,
+            CustomText(
+              text: 'Welcome back, $userName',
+              fontSize: 16.sp,
+              fontWeight: AppWeights.w400,
+              color: AppColors.grey,
+            ),
+          ],
+        ),
+        // Profile Avatar
+        Container(
+          width: 70.w,
+          height: 70.h,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFFE0E0E0), width: 3),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: .1),
+                blurRadius: 8.r,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
+          child: CircleAvatar(
+            backgroundColor: AppColors.primary,
+            child: Icon(AppIcons.person, size: 40.sp, color: AppColors.white),
+          ),
         ),
-        const SizedBox(width: 12),
-        _ProfileAvatar(imageUrl: profileImageUrl),
       ],
     );
   }
 }
 
-class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar({required this.imageUrl});
-  final String? imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
-
-    return Container(
-      width: 64,
-      height: 64,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFE1E4EF)),
-      ),
-      child: ClipOval(
-        child: hasImage
-            ? Image.network(imageUrl!, fit: BoxFit.cover)
-            : const Icon(Icons.person, size: 40, color: AppColors.primary),
-      ),
-    );
-  }
-}
-
-/* ---------------- BANNER ---------------- */
-
+// Smart Timetable Banner Card
 class _SmartTimetableBanner extends StatelessWidget {
   const _SmartTimetableBanner();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 170,
+      width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4974F3), Color(0xFF7362E9)],
+        gradient: LinearGradient(
+          colors: [const Color(0xFF5B7FFF), const Color(0xFF7B68EE)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(24.r),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5B7FFF).withValues(alpha: .3),
+            blurRadius: 12,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Stack(
         children: [
+          // Decorative circle background
           Positioned(
-            right: 20,
-            top: 40,
-            child: Icon(
-              Icons.school,
-              size: 80,
-              color: Colors.black,
+            right: -30.w,
+            bottom: -30.h,
+            child: Container(
+              width: 150.w,
+              height: 150.h,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: .1),
+              ),
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 24, 120, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Content
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 28.h),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Smart Timetable',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Smart Timetable',
+                        style: TextStyle(
+                          fontSize: 20.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      12.verticalSpace,
+                      Text(
+                        'Your schedule, simplified.\nStay organized and\nachieve more.',
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white.withValues(alpha: .95),
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(height: 10),
-                Text(
-                  'Your schedule, simplified.\nStay organized and achieve more.',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
-                ),
+                Expanded(flex: 1, child: Center(child: _GraduationCapIcon())),
               ],
             ),
           ),
@@ -219,63 +262,151 @@ class _SmartTimetableBanner extends StatelessWidget {
   }
 }
 
-/* ---------------- QUICK ACCESS ---------------- */
+// Graduation Cap Icon
+class _GraduationCapIcon extends StatelessWidget {
+  const _GraduationCapIcon();
 
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      Icons.school,
+      size: 80.sp,
+      color: AppColors.black,
+      //  Colors.white.withValues(alpha: .3),
+    );
+  }
+}
+
+// Quick Access Section
+class _QuickAccessSection extends StatelessWidget {
+  _QuickAccessSection();
+
+  final NavigationController navCtrl = Get.find<NavigationController>();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Access',
+          style: TextStyle(
+            fontSize: 22.sp,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1A1A1A),
+          ),
+        ),
+        16.verticalSpace,
+        Row(
+          children: [
+            // Timetable Card
+            Expanded(
+              child: _QuickAccessCard(
+                icon: Icons.calendar_today,
+                iconBackgroundColor: const Color(0xFFE8F0FF),
+                iconColor: AppColors.primary,
+                title: 'Timetable',
+                subtitle: 'View full timetable',
+                onTap: () => navCtrl.changeIndex(1),
+              ),
+            ),
+            12.horizontalSpace,
+            // Profile Card
+            Expanded(
+              child: _QuickAccessCard(
+                icon: AppIcons.person_outline,
+                iconBackgroundColor: const Color(0xFFE8F8F0),
+                iconColor: const Color(0xFF26B890),
+                title: 'Profile',
+                subtitle: 'Manage your account',
+                onTap: () => navCtrl.changeIndex(2),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// Individual Quick Access Card
 class _QuickAccessCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconBackgroundColor;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
   const _QuickAccessCard({
     required this.icon,
+    required this.iconBackgroundColor,
     required this.iconColor,
-    required this.bubbleColor,
     required this.title,
     required this.subtitle,
     required this.onTap,
   });
 
-  final IconData icon;
-  final Color iconColor;
-  final Color bubbleColor;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
+    return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 170,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: bubbleColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: iconColor, size: 34),
-            ),
-            const SizedBox(height: 16),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+          borderRadius: BorderRadius.circular(20.r),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: .08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 16.w),
+          child: Column(
+            children: [
+              // Icon Container
+              Container(
+                width: 70.w,
+                height: 70.w,
+                decoration: BoxDecoration(
+                  color: iconBackgroundColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 36.sp, color: iconColor),
+              ),
+              16.verticalSpace,
+              // Title
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1A1A1A),
+                ),
+              ),
+              6.verticalSpace,
+              // Subtitle
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF888888),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/* ---------------- FEATURE CAROUSEL (FIXED) ---------------- */
+// Feature Carousel Slider with Auto-scroll
 class _FeatureCarouselSlider extends StatelessWidget {
   const _FeatureCarouselSlider();
 
@@ -292,19 +423,18 @@ class _FeatureCarouselSlider extends StatelessWidget {
             final feature = carouselCtrl.features[index];
 
             return Container(
-          
               width: double.infinity,
               margin: EdgeInsets.symmetric(horizontal: 4.w),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20.r),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: .08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                // boxShadow: [
+                //   // BoxShadow(
+                //   //   color: Colors.black.withValues(alpha: .08),
+                //   //   blurRadius: 12,
+                //   //   offset: const Offset(0, 4),
+                //   // ),
+                // ],
               ),
               child: Padding(
                 padding: EdgeInsets.all(16.w),
@@ -370,31 +500,31 @@ class _FeatureCarouselSlider extends StatelessWidget {
           ),
         ),
         12.verticalSpace,
-        Obx(() {
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              carouselCtrl.features.length,
-              (dotIndex) => GestureDetector(
-                onTap: () => carouselCtrl.goToPage(dotIndex),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  width: carouselCtrl.currentIndex.value == dotIndex
-                      ? 28.w
-                      : 10.w,
-                  height: 8.h,
-                  margin: EdgeInsets.symmetric(horizontal: 3.w),
-                  decoration: BoxDecoration(
-                    color: carouselCtrl.currentIndex.value == dotIndex
-                        ? AppColors.primary
-                        : const Color(0xFFD9D9D9),
-                    borderRadius: BorderRadius.circular(4.r),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
+        // Obx(() {
+        //   return Row(
+        //     mainAxisAlignment: MainAxisAlignment.center,
+        //     children: List.generate(
+        //       carouselCtrl.features.length,
+        //       (dotIndex) => GestureDetector(
+        //         onTap: () => carouselCtrl.goToPage(dotIndex),
+        //         child: AnimatedContainer(
+        //           duration: const Duration(milliseconds: 250),
+        //           width: carouselCtrl.currentIndex.value == dotIndex
+        //               ? 28.w
+        //               : 10.w,
+        //           height: 8.h,
+        //           margin: EdgeInsets.symmetric(horizontal: 3.w),
+        //           decoration: BoxDecoration(
+        //             color: carouselCtrl.currentIndex.value == dotIndex
+        //                 ? AppColors.primary
+        //                 : const Color(0xFFD9D9D9),
+        //             borderRadius: BorderRadius.circular(4.r),
+        //           ),
+        //         ),
+        //       ),
+        //     ),
+        //   );
+        // }),
       ],
     );
   }

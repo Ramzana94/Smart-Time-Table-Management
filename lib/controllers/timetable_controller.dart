@@ -4,7 +4,6 @@ import 'package:smart_timetable_managment/core/utils/app_snack_bar.dart';
 import 'package:smart_timetable_managment/models/timetable_grid_model.dart';
 import 'package:smart_timetable_managment/models/timetable_model.dart';
 
-
 class TimetableController extends GetxController {
   final TimetableService _timetableService = TimetableService();
 

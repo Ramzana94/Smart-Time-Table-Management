@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:smart_timetable_managment/controllers/auth_controller.dart';
 import 'package:smart_timetable_managment/core/constants/app_colors.dart';
@@ -7,174 +9,184 @@ import 'package:smart_timetable_managment/core/constants/app_icons.dart';
 import 'package:smart_timetable_managment/core/constants/app_images.dart';
 import 'package:smart_timetable_managment/core/constants/app_sizes.dart';
 import 'package:smart_timetable_managment/core/constants/app_strings.dart';
-import 'package:smart_timetable_managment/core/routes/routes_name.dart';
+import 'package:smart_timetable_managment/core/constants/app_weight.dart';
 import 'package:smart_timetable_managment/core/utils/app_validations.dart';
 import 'package:smart_timetable_managment/widgets/app_button.dart';
 import 'package:smart_timetable_managment/widgets/app_dropdown.dart';
+import 'package:smart_timetable_managment/widgets/app_text.dart';
 import 'package:smart_timetable_managment/widgets/app_textfield.dart';
-import 'package:get/get.dart';
 
-class MyRegistrationScreen extends StatelessWidget {
-  MyRegistrationScreen({super.key});
-  // final ValueNotifier<String?> selectedRole = ValueNotifier(null);
-   final AuthController authController = Get.find();
-  final signUpFormKey = GlobalKey<FormState>();
+class RegisterScreen extends StatelessWidget {
+  RegisterScreen({super.key});
 
+  final ValueNotifier<String?> selectedRole = ValueNotifier(null);
+  final AuthController authController = Get.find();
+  final GlobalKey<FormState> signUpFormKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           child: SingleChildScrollView(
             child: Form(
               key: signUpFormKey,
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    AppStrings.appName,
-                    style: TextStyle(
-                      fontSize: AppSizes.s22,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: AppFonts.poppins,
-                      color: AppColors.primary,
-                    ),
+                  CustomText(
+                    text: AppStrings.appSubtitle,
+                    fontSize: AppSizes.s24,
+                    fontWeight: AppWeights.w600,
+                    color: AppColors.primary,
+                    fontFamily: AppFonts.poppins,
                   ),
-                  10.verticalSpace,
-                  Text(
-                    AppStrings.register,
-                    style: TextStyle(fontSize: AppSizes.s24, fontWeight: FontWeight.w600),
+                  CustomText(
+                    text: AppStrings.register,
+                    fontSize: AppSizes.s24,
+                    fontWeight: AppWeights.w600,
+                    color: AppColors.black,
                   ),
+
                   10.verticalSpace,
-                  Text(
-                    AppStrings.registerSubTitle,
-                    style: TextStyle(fontSize: AppSizes.s14, fontWeight: FontWeight.w400),
+                  CustomText(
+                    text: AppStrings.registerSubTitle,
+                    fontSize: AppSizes.s14,
+                    fontWeight: AppWeights.w400,
+                    color: AppColors.black,
                   ),
-                  10.verticalSpace,
+
+                  20.verticalSpace,
                   CustomTextFormField(
                     hintText: AppStrings.fullName,
                     validator: AppValidators.validateName,
-
                     controller: authController.signupNameController,
-                    obscureText: false,
-                    prefixIcon: Icon(AppIcons.profile), borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10),
+                    prefixIcon: Icon(AppIcons.person),
                   ),
                   10.verticalSpace,
                   CustomTextFormField(
                     hintText: AppStrings.email,
+                    validator: AppValidators.validateEmail,
                     controller: authController.signupEmailController,
-                    obscureText: false,
+                    borderRadius: BorderRadius.circular(10),
                     prefixIcon: Icon(AppIcons.email),
-                   validator: AppValidators.validateEmail, borderRadius: BorderRadius.circular(10), 
                   ),
                   10.verticalSpace,
                   CustomTextFormField(
                     hintText: AppStrings.password,
+                    validator: AppValidators.validatePassword,
                     controller: authController.signupPasswordController,
-                    obscureText: true,
+                    borderRadius: BorderRadius.circular(10),
+                    obsecureText: true,
                     prefixIcon: Icon(AppIcons.key),
                     isVisible: authController.isPasswordVisible,
                     onToggle: authController.togglePasswordVisibility,
-                    validator: AppValidators.validatePassword, borderRadius: BorderRadius.circular(10),
                   ),
                   10.verticalSpace,
                   CustomTextFormField(
                     hintText: AppStrings.confirmPassword,
+                    validator: (value) {
+                      return AppValidators.validateConfirmPassword(
+                        value,
+                        authController.signupPasswordController.text,
+                      );
+                    },
                     controller: authController.signupConfirmPasswordController,
-                    obscureText: true,
-                    prefixIcon: Icon(AppIcons.key),
-                    isVisible: authController.isPasswordVisible,
+                    borderRadius: BorderRadius.circular(10),
+                    obsecureText: true,
+                    prefixIcon: Icon(Icons.key),
+                    isVisible: authController.isConfirmPasswordVisible,
                     onToggle: authController.toggleConfirmPasswordVisibility,
-                    validator: AppValidators.validatePassword, borderRadius: BorderRadius.circular(10),),
-
-                  16.verticalSpace,
-                CustomDropdown(
-                    items: authController.roles,
+                  ),
+                  10.verticalSpace,
+                  CustomDropdown(
+                    items: authController.googleRoles,
                     itemLabel: (role) => role,
-                    // valueListenable: selectedRole,
-                      valueListenable: authController.roleNotifier,
+                    valueListenable: authController.roleNotifier,
                     onChanged: (value) {
-                      // selectedRole.value = value;
-                          authController.updateSelectedRole(value);
+                      authController.updateSelectedRole(value);
                     },
                     hintText: AppStrings.selectRole,
                   ),
-                  16.verticalSpace,
+                  30.verticalSpace,
                   Obx(
                     () => CustomButton(
-                      borderRadius: AppSizes.r10,
-                      height: 57.h,
-                      minWidth: 1.sw,
-                      text: AppStrings.registerButton,
                       isLoading: authController.isSignupLoading.value,
-                      color: AppColors.primary,
-                      onPressed: (){
+                      onPressed: () {
                         authController.signUp();
                       },
+                      text: AppStrings.registerButton,
+                      color: AppColors.primary,
+                      borderRadius: 10.r,
+                      minWidth: 327.w,
+                      height: 56.h,
                       textColor: AppColors.white,
-                     
                     ),
                   ),
-                  16.verticalSpace,
+                  20.verticalSpace,
                   Row(
                     children: [
                       Expanded(
-                        child: Divider(thickness: 1, color: AppColors.grey),
-                      ),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          AppStrings.orCotinueWith,
-                          style: TextStyle(
-                            color: AppColors.black,
-                            fontSize: AppSizes.s13,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        child: Divider(
+                          color: AppColors.grey,
+                          thickness: 1,
+                          endIndent: 10,
+                          indent: 10,
                         ),
                       ),
-
+                      CustomText(text: AppStrings.orCotinueWith),
                       Expanded(
-                        child: Divider(thickness: 1, color: AppColors.grey),
+                        child: Divider(
+                          color: AppColors.grey,
+                          thickness: 1,
+                          indent: 10,
+                          endIndent: 10,
+                        ),
                       ),
                     ],
                   ),
-                  16.verticalSpace,
-                 Obx(()=>
-                  CustomButton(
-                    height: 57,
-                    borderRadius: AppSizes.r10,
-                    isLoading: authController.isGoogleLoading.value,
-                    text: AppStrings.google,
-                    textColor: AppColors.black,
-                    color: AppColors.white,
-                   loaderColor: AppColors.primary,
-                    imagePath: AppImages.googleImage,
-                    minWidth: 1.sw,
-                    
-                    onPressed: () {
-                      authController.continueWithGoogle();
-                    },
-                  ),),
-                  16.verticalSpace,
+                  20.verticalSpace,
+                  Obx(
+                    () => CustomButton(
+                      isLoading: authController.isGoogleLoading.value,
+                      loaderColor: AppColors.primary,
+                      onPressed: () {
+                        authController.continueWithGoogle();
+                      },
+                      text: AppStrings.google,
+                      color: AppColors.white,
+                      borderRadius: 10.r,
+                      minWidth: 400.w,
+                      height: 56.h,
+                      textColor: AppColors.primary,
+                      borderColor: AppColors.grey,
+                      imagePath: AppImages.googleImage,
+                    ),
+                  ),
+                  20.verticalSpace,
                   Center(
                     child: InkWell(
                       onTap: () {
-                        Get.toNamed(RoutesName.loginScreen);
+                        Get.back();
                       },
                       child: RichText(
+                        textAlign: TextAlign.center,
                         text: TextSpan(
                           text: AppStrings.haveAccount,
-                          style: TextStyle(fontSize: AppSizes.s14, color: AppColors.black),
-                          children: <TextSpan>[
+                          style: TextStyle(
+                            color: AppColors.black,
+                            fontSize: AppSizes.s14,
+                            fontWeight: AppWeights.w400,
+                          ),
+                          children: [
                             TextSpan(
                               text: AppStrings.login,
                               style: TextStyle(
                                 color: AppColors.primary,
-                                fontSize: AppSizes.s14,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: AppWeights.w600,
                               ),
                             ),
                           ],

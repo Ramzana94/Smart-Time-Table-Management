@@ -5,7 +5,6 @@ import 'package:get/get.dart';
 import 'package:smart_timetable_managment/core/services/user_profile_service.dart';
 import 'package:smart_timetable_managment/models/user_profile_model.dart';
 
-
 class UserSessionController extends GetxController {
   UserSessionController({
     FirebaseAuth? auth,
@@ -87,5 +86,10 @@ class UserSessionController extends GetxController {
     _authSubscription?.cancel();
     _profileSubscription?.cancel();
     super.onClose();
+  }
+
+  Future<void> updateUserProfile(UserProfileModel profile) async {
+    await _userProfileService.updateProfile(profile);
+    currentUser.value = profile;
   }
 }

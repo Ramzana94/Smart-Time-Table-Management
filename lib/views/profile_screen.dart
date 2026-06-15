@@ -1,280 +1,292 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:smart_timetable_managment/controllers/app_info_controller.dart';
 import 'package:smart_timetable_managment/controllers/auth_controller.dart';
 import 'package:smart_timetable_managment/controllers/user_session_controller.dart';
 import 'package:smart_timetable_managment/core/constants/app_colors.dart';
 import 'package:smart_timetable_managment/core/constants/app_icons.dart';
 import 'package:smart_timetable_managment/core/constants/app_strings.dart';
+import 'package:smart_timetable_managment/core/constants/app_weight.dart';
 import 'package:smart_timetable_managment/core/utils/app_dialogbox.dart';
-import 'package:smart_timetable_managment/widgets/app_button.dart';
+import 'package:smart_timetable_managment/widgets/app_text.dart';
+
+
 class ProfileScreen extends StatelessWidget {
   ProfileScreen({super.key});
 
   final AuthController authController = Get.find<AuthController>();
+
   final UserSessionController userSessionController =
       Get.find<UserSessionController>();
+  final appInfo = Get.find<AppInfoController>();
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        child: Obx(() {
-          final profile = userSessionController.currentUser.value;
-          final name = profile?.name.trim().isNotEmpty == true
-              ? profile!.name.trim()
-              : 'User';
-          final email = profile?.email.trim() ?? '';
-          final role = profile?.role.trim().isNotEmpty == true
-              ? profile!.role.trim()
-              : 'Student';
-          final firstLetter = name[0].toUpperCase();
+      child: Obx(() {
+        final profile = userSessionController.currentUser.value;
 
-          return SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 60.r,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-                  child: Text(
-                    firstLetter,
-                    style: TextStyle(
-                      fontSize: 34.sp,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+        final name = profile?.name.trim().isNotEmpty == true
+            ? profile!.name.trim()
+            : 'User';
+
+        final email = profile?.email ?? '';
+
+        final role = profile?.role.trim().isNotEmpty == true
+            ? profile!.role.trim()
+            : 'Student';
+
+        final firstLetter = name.isNotEmpty ? name[0].toUpperCase() : 'U';
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF5F7FB),
+          body: Column(
+            children: [
+              //  PROFILE CARD
+              Container(
+                width: double.infinity,
+                margin: EdgeInsets.all(20.w),
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(18.r),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: .05),
+                      blurRadius: 10.r,
+                      offset: const Offset(0, 5),
                     ),
-                  ),
+                  ],
                 ),
-                14.verticalSpace,
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                6.verticalSpace,
-                Text(
-                  role,
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    color: const Color(0xFF61748E),
-                  ),
-                ),
-                if (email.isNotEmpty) ...[
-                  4.verticalSpace,
-                  Text(
-                    email,
-                    style: TextStyle(
-                      fontSize: 13.sp,
-                      color: const Color(0xFF61748E),
+                child: Column(
+                  children: [
+                    /// PROFILE IMAGE
+                    Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 50.r,
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: .15,
+                          ),
+                          child: CustomText(
+                            text: firstLetter,
+                            fontSize: 26.sp,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        // EDIT BUTTON
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: InkWell(
+                            onTap: () {
+                              authController.showEditProfileBottomSheet(
+                                name,
+                                email,
+                              );
+                            },
+
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                AppIcons.edit,
+                                size: 14,
+                                color: AppColors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-                30.verticalSpace,
-                CustomButton(
-                  onPressed: () {
-                    authController.showChangePasswordBottomSheet();
-                  },
-                  text: AppStrings.changePassword,
-                  color: AppColors.primary,
-                  borderRadius: 10,
-                  height: 57,
-                  textColor: AppColors.white,
+
+                    14.verticalSpace,
+                    // NAME
+                    CustomText(
+                      text: name,
+                      fontSize: 20.sp,
+                      fontWeight: AppWeights.w700,
+                    ),
+
+                    6.verticalSpace,
+
+                    /// ROLE
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 10.w,
+                        vertical: 4.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: .1),
+                        borderRadius: BorderRadius.circular(20.r),
+                      ),
+                      child: CustomText(
+                        text: role,
+                        fontSize: 14.sp,
+                        color: AppColors.primary,
+                        fontWeight: AppWeights.w500,
+                      ),
+                    ),
+
+                    10.verticalSpace,
+
+                    /// EMAIL
+                    CustomText(
+                      text: email,
+                      fontSize: 15.sp,
+                      color: AppColors.grey,
+                    ),
+                  ],
                 ),
-                20.verticalSpace,
-                CustomButton(
-                  onPressed: () {
-                    AppDialogs.showLogoutDialog(() {
-                      authController.logout();
-                    });
-                  },
-                  text: AppStrings.logout,
-                  color: AppColors.red,
-                  borderRadius: 10.r,
-                  height: 57.h,
-                  textColor: AppColors.white,
-                  icon: const Icon(AppIcons.logout, color: AppColors.white),
+              ),
+
+              //  MENU
+              Expanded(
+                child: ListView(
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
+
+                  children: [
+                    _buildTile(
+                      leading: const Icon(
+                        AppIcons.lock_outline,
+                        color: AppColors.primary,
+                      ),
+                      title: AppStrings.changePassword,
+                      onTap: authController.showChangePasswordBottomSheet,
+                    ),
+
+                    _buildTile(
+                      leading: const Icon(
+                        AppIcons.info_outline,
+                        color: AppColors.primary,
+                      ),
+                      title: AppStrings.aboutApp,
+                      onTap: () {
+                        Get.defaultDialog(
+                          title: AppStrings.aboutApp,
+                          radius: 20.r,
+                          content: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10.w),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  AppIcons.degree,
+                                  size: 60.sp,
+                                  color: AppColors.primary,
+                                ),
+
+                                15.verticalSpace,
+                                CustomText(
+                                  text: AppStrings.appName,
+                                  fontSize: 18.sp,
+                                  fontWeight: AppWeights.w600,
+                                  textAlign: TextAlign.center,
+                                ),
+
+                                10.verticalSpace,
+                                CustomText(
+                                  text: AppStrings.aboutAppTitle,
+                                  fontSize: 14.sp,
+                                  color: AppColors.grey,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    _buildTile(
+                      leading: const Icon(
+                        AppIcons.history,
+                        color: AppColors.primary,
+                      ),
+                      title: AppStrings.appVersion,
+                      trailing: Obx(
+                        () => CustomText(
+                          text: appInfo.appVersion.value,
+                          fontSize: 12.sp,
+                          fontWeight: AppWeights.w600,
+                        ),
+                      ),
+                    ),
+
+                    30.verticalSpace,
+
+                    /// LOGOUT
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14.r),
+                        color: AppColors.red.withValues(alpha: .08),
+                      ),
+
+                      child: ListTile(
+                        leading: const Icon(
+                          AppIcons.logout,
+                          color: AppColors.red,
+                        ),
+                        title: CustomText(
+                          text: AppStrings.logout,
+                          color: AppColors.red,
+                          fontWeight: AppWeights.w600,
+                        ),
+
+                        onTap: () {
+                          AppDialogs.showLogoutDialog(
+                            message: AppStrings.confirmLogout,
+                            onConfirm: authController.logout,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
-        }),
+              ),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  //  TILE
+
+  Widget _buildTile({
+    Widget? leading,
+    required String title,
+    VoidCallback? onTap,
+    Widget? trailing,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14.r),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.black.withValues(alpha: .04),
+            blurRadius: 8.r,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+
+      child: ListTile(
+        leading: leading,
+        title: CustomText(
+          text: title,
+          fontSize: 14.sp,
+          fontWeight: AppWeights.w500,
+        ),
+        trailing: trailing ?? const Icon(AppIcons.arrow_forward_ios, size: 16),
+        onTap: onTap,
       ),
     );
   }
 }
-
-// import 'package:flutter/material.dart';
-// import 'package:flutter_screenutil/flutter_screenutil.dart';
-// import 'package:get/get.dart';
-// import 'package:smart_timetable_managment/controllers/auth_controller.dart';
-// import 'package:smart_timetable_managment/controllers/user_session_controller.dart';
-// import 'package:smart_timetable_managment/core/constants/app_colors.dart';
-// import 'package:smart_timetable_managment/core/constants/app_icons.dart';
-// import 'package:smart_timetable_managment/core/constants/app_strings.dart';
-// import 'package:smart_timetable_managment/core/utils/app_dialogbox.dart';
-// import 'package:smart_timetable_managment/widgets/app_button.dart';
-
-// class ProfileScreen extends StatelessWidget {
-//   ProfileScreen({super.key});
-
-//   final AuthController authController = Get.find<AuthController>();
-//   final UserSessionController userSessionController =
-//       Get.find<UserSessionController>();
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return SafeArea(
-//       child: Padding(
-//         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-//         child: Obx(() {
-//           final profile = userSessionController.currentUser.value;
-
-//           final name = profile?.name.trim().isNotEmpty == true
-//               ? profile!.name.trim()
-//               : 'User';
-
-//           final email = profile?.email.trim() ?? '';
-
-//           final role = profile?.role.trim().isNotEmpty == true
-//               ? profile!.role.trim()
-//               : 'Student';
-
-//           final firstLetter = name[0].toUpperCase();
-
-//           final department = profile?.department ?? '';
-//           final semester = profile?.semester ?? '';
-//           final shift = profile?.shift ?? '';
-
-//           return SingleChildScrollView(
-//             child: Column(
-//               mainAxisSize: MainAxisSize.min,
-//               children: [
-//                 /// Avatar
-//                 CircleAvatar(
-//                   radius: 60.r,
-//                   backgroundColor: AppColors.primary.withValues(alpha: 0.12),
-//                   child: Text(
-//                     firstLetter,
-//                     style: TextStyle(
-//                       fontSize: 34.sp,
-//                       fontWeight: FontWeight.w700,
-//                       color: AppColors.primary,
-//                     ),
-//                   ),
-//                 ),
-
-//                 14.verticalSpace,
-
-//                 /// Name
-//                 Text(
-//                   name,
-//                   style: TextStyle(
-//                     fontSize: 20.sp,
-//                     fontWeight: FontWeight.w700,
-//                   ),
-//                 ),
-
-//                 6.verticalSpace,
-
-//                 /// Role
-//                 Text(
-//                   role,
-//                   style: TextStyle(
-//                     fontSize: 14.sp,
-//                     color: const Color(0xFF61748E),
-//                   ),
-//                 ),
-
-//                 /// Email
-//                 if (email.isNotEmpty) ...[
-//                   4.verticalSpace,
-//                   Text(
-//                     email,
-//                     style: TextStyle(
-//                       fontSize: 13.sp,
-//                       color: const Color(0xFF61748E),
-//                     ),
-//                   ),
-//                 ],
-
-//                 /// 🎯 Student Info (IMPORTANT)
-//                 if (role == 'Student') ...[
-//                   20.verticalSpace,
-//                   _infoTile("Department", department),
-//                   _infoTile("Semester", semester),
-//                   _infoTile("Shift", shift),
-//                 ],
-
-//                 30.verticalSpace,
-
-//                 /// Change Password
-//                 CustomButton(
-//                   onPressed: () {
-//                     authController.showChangePasswordBottomSheet();
-//                   },
-//                   text: AppStrings.changePassword,
-//                   color: AppColors.primary,
-//                   borderRadius: 10,
-//                   height: 57,
-//                   textColor: AppColors.white,
-//                 ),
-
-//                 20.verticalSpace,
-
-//                 /// Logout
-//                 CustomButton(
-//                   onPressed: () {
-//                     AppDialogs.showLogoutDialog(() {
-//                       authController.logout();
-//                     });
-//                   },
-//                   text: AppStrings.logout,
-//                   color: AppColors.red,
-//                   borderRadius: 10,
-//                   height: 57,
-//                   textColor: AppColors.white,
-//                   icon: const Icon(AppIcons.logout, color: AppColors.white),
-//                 ),
-//               ],
-//             ),
-//           );
-//         }),
-//       ),
-//     );
-//   }
-
-//   /// 🔹 Info Tile
-//   Widget _infoTile(String title, String value) {
-//     if (value.isEmpty) return const SizedBox();
-
-//     return Container(
-//       margin: const EdgeInsets.only(bottom: 10),
-//       padding: const EdgeInsets.all(12),
-//       decoration: BoxDecoration(
-//         color: const Color(0xFFF5F8FC),
-//         borderRadius: BorderRadius.circular(12),
-//       ),
-//       child: Row(
-//         children: [
-//           Text(
-//             "$title: ",
-//             style: const TextStyle(
-//               fontWeight: FontWeight.w600,
-//               color: Color(0xFF12284A),
-//             ),
-//           ),
-//           Expanded(
-//             child: Text(
-//               value,
-//               style: const TextStyle(color: Color(0xFF61748E)),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
